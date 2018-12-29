@@ -15,30 +15,35 @@ namespace MongoGUIView
         {
             InitializeComponent();
             InitTool();
-            MDataViewInfo = dataViewInfo;
+            mDataViewInfo = dataViewInfo;
             DataShower.Add(lstData);
             if (!GuiConfig.IsUseDefaultLanguage)
             {
-                DeleteFileToolStripMenuItem.Text = GuiConfig.GetText(TextType.MainMenuOperationFileSystemDelFile);
+                DeleteFileToolStripMenuItem.Text = GuiConfig.GetText("MainMenu.OperationFileSystemDelFile");
                 DeleteFileStripButton.Text = DeleteFileToolStripMenuItem.Text;
 
-                UploadFileToolStripMenuItem.Text = GuiConfig.GetText(TextType.MainMenuOperationFileSystemUploadFile);
+                UploadFileToolStripMenuItem.Text = GuiConfig.GetText("MainMenu.OperationFileSystemUploadFile");
                 UploadFileStripButton.Text = UploadFileToolStripMenuItem.Text;
 
                 UploadFolderToolStripMenuItem.Text =
-                    GuiConfig.GetText(TextType.MainMenuOperationFileSystemUploadFolder);
+                    GuiConfig.GetText("MainMenu.OperationFileSystemUploadFolder");
                 UpLoadFolderStripButton.Text = UploadFolderToolStripMenuItem.Text;
 
-                DownloadFileToolStripMenuItem.Text = GuiConfig.GetText(TextType.MainMenuOperationFileSystemDownload);
+                DownloadFileToolStripMenuItem.Text = GuiConfig.GetText("MainMenu.OperationFileSystemDownload");
                 DownloadFileStripButton.Text = DownloadFileToolStripMenuItem.Text;
 
-                OpenFileToolStripMenuItem.Text = GuiConfig.GetText(TextType.MainMenuOperationFileSystemOpenFile);
+                OpenFileToolStripMenuItem.Text = GuiConfig.GetText("MainMenu.OperationFileSystemOpenFile");
                 OpenFileStripButton.Text = OpenFileToolStripMenuItem.Text;
             }
         }
 
         private void ctlGFSView_Load(object sender, EventArgs e)
         {
+
+            lstData.AllowDrop = true;
+            tabDataShower.AllowDrop = true;
+            AllowDrop = true;
+
             OpenFileToolStripMenuItem.Click += OpenFileStripButton_Click;
             DownloadFileToolStripMenuItem.Click += DownloadFileStripButton_Click;
             UploadFileToolStripMenuItem.Click += UploadFileStripButton_Click;
@@ -53,7 +58,7 @@ namespace MongoGUIView
             UploadFolderToolStripMenuItem.Enabled = true;
 
             cmbListViewStyle.Visible = true;
-            cmbListViewStyle.SelectedIndexChanged += (x, y) => { lstData.View = (View) cmbListViewStyle.SelectedIndex; };
+            cmbListViewStyle.SelectedIndexChanged += (x, y) => { lstData.View = (View)cmbListViewStyle.SelectedIndex; };
         }
 
         private void lstData_SelectedIndexChanged(object sender, EventArgs e)
@@ -85,7 +90,7 @@ namespace MongoGUIView
                     OpenFileToolStripMenuItem.Enabled = true;
                     DownloadFileToolStripMenuItem.Enabled = true;
                     DownloadFileStripButton.Enabled = true;
-                    if (!MDataViewInfo.IsReadOnly)
+                    if (!mDataViewInfo.IsReadOnly)
                     {
                         DeleteFileStripButton.Enabled = true;
                         DeleteFileToolStripMenuItem.Enabled = true;
@@ -98,7 +103,7 @@ namespace MongoGUIView
 
                     DownloadFileToolStripMenuItem.Enabled = false;
                     DownloadFileStripButton.Enabled = false;
-                    if (!MDataViewInfo.IsReadOnly)
+                    if (!mDataViewInfo.IsReadOnly)
                     {
                         DeleteFileStripButton.Enabled = true;
                         DeleteFileToolStripMenuItem.Enabled = true;
@@ -107,14 +112,63 @@ namespace MongoGUIView
             }
         }
 
+        /// <summary>
+        ///     双击操作
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         protected void lstData_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             OpenFileStripButton_Click(sender, e);
         }
 
+
+        public static Func<Gfs.UpLoadFileOption> GetUploadFileOption;
+
+        /// <summary>
+        ///     拖曳终止
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void lstData_DragDrop(object sender, DragEventArgs e)
+        {
+            Array UploadfileList = (Array)e.Data.GetData(DataFormats.FileDrop);
+            if (!MyMessageBox.ShowConfirm("UploadFile", "是否上传" + UploadfileList.Length + "个文件")) return;
+            var opt = GetUploadFileOption();
+            var count = 0;
+            foreach (string UploadFilename in UploadfileList)
+            {
+                if (File.Exists(UploadFilename))
+                {
+                    Gfs.UpLoadFile(UploadFilename, opt, RuntimeMongoDbContext.GetCurrentDataBase());
+                    count++;
+                }
+                else
+                {
+                    if (Directory.Exists(UploadFilename))
+                    {
+                        var uploadDir = new DirectoryInfo(UploadFilename);
+                        UploadFolder(uploadDir, ref count, opt);
+                    }
+                }
+            }
+            RefreshGui();
+            MyMessageBox.ShowMessage("Upload", "Upload Completed! Upload Files Count: " + count);
+        }
+        
+        /// <summary>
+        ///     开始拖曳
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void lstData_DragEnter(object sender, DragEventArgs e)
+        {
+            e.Effect = DragDropEffects.Copy;
+        }
+
         protected void lstData_MouseClick(object sender, MouseEventArgs e)
         {
-            RuntimeMongoDbContext.SelectObjectTag = MDataViewInfo.StrDbTag;
+            RuntimeMongoDbContext.SelectObjectTag = mDataViewInfo.strCollectionPath;
             if (lstData.SelectedItems.Count > 0)
             {
                 if (e.Button == MouseButtons.Right)
@@ -140,13 +194,7 @@ namespace MongoGUIView
             var upfile = new OpenFileDialog();
             if (upfile.ShowDialog() == DialogResult.OK)
             {
-                var opt = new Gfs.UpLoadFileOption();
-                var frm = new FrmGfsOption();
-                frm.ShowDialog();
-                opt.AlreadyOpt = frm.Option;
-                opt.DirectorySeparatorChar = frm.DirectorySeparatorChar;
-                opt.FileNameOpt = frm.Filename;
-                opt.IgnoreSubFolder = frm.IgnoreSubFolder;
+                var opt = GetUploadFileOption();
                 Gfs.UpLoadFile(upfile.FileName, opt, RuntimeMongoDbContext.GetCurrentDataBase());
                 RefreshGui();
             }
@@ -162,13 +210,7 @@ namespace MongoGUIView
             var upfolder = new FolderBrowserDialog();
             if (upfolder.ShowDialog() == DialogResult.OK)
             {
-                var opt = new Gfs.UpLoadFileOption();
-                var frm = new FrmGfsOption();
-                frm.ShowDialog();
-                opt.AlreadyOpt = frm.Option;
-                opt.DirectorySeparatorChar = frm.DirectorySeparatorChar;
-                opt.FileNameOpt = frm.Filename;
-                opt.IgnoreSubFolder = frm.IgnoreSubFolder;
+                var opt = GetUploadFileOption();
                 var uploadDir = new DirectoryInfo(upfolder.SelectedPath);
                 var count = 0;
                 UploadFolder(uploadDir, ref count, opt);
@@ -258,13 +300,8 @@ namespace MongoGUIView
         /// </summary>
         public void DeleteFileStripButton_Click(object sender, EventArgs e)
         {
-            var strTitle = "Delete Files";
-            var strMessage = "Are you sure to delete selected File(s)?";
-            if (!GuiConfig.IsUseDefaultLanguage)
-            {
-                strTitle = GuiConfig.GetText(TextType.DropData);
-                strMessage = GuiConfig.GetText(TextType.DropDataConfirm);
-            }
+            var strTitle = GuiConfig.GetText("Delete Files", "DropData");
+            var strMessage = GuiConfig.GetText("Are you sure to delete selected File(s)?", "DropDataConfirm");
             if (MyMessageBox.ShowConfirm(strTitle, strMessage))
             {
                 foreach (ListViewItem item in lstData.SelectedItems)
@@ -276,5 +313,7 @@ namespace MongoGUIView
         }
 
         #endregion
+
+
     }
 }

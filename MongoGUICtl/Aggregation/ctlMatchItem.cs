@@ -28,18 +28,17 @@ namespace MongoGUICtl.Aggregation
             return null;
         }
 
+        /// <summary>
+        ///     加载
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void ctlMatchItem_Load(object sender, EventArgs e)
         {
-            foreach (var item in AggregationHelper.GetComparisonfunction())
-            {
-                cmbComparisonfunction.Items.Add(item);
-            }
+            Common.UIAssistant.FillComberWithArray(cmbComparisonfunction, AggregationFunc.GetComparisonfunction(), true);
             if (RuntimeMongoDbContext.GetCurrentCollection() != null)
             {
-                foreach (
-                    var item in
-                        MongoHelper.GetCollectionSchame(RuntimeMongoDbContext.GetCurrentCollection())
-                    )
+                foreach (var item in MongoHelper.GetCollectionSchame(RuntimeMongoDbContext.GetCurrentCollection()))
                 {
                     cmbField.Items.Add(item);
                 }

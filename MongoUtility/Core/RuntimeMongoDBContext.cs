@@ -1,20 +1,10 @@
-﻿/*
- * Created by SharpDevelop.
- * User: scs
- * Date: 2015/1/8
- * Time: 9:18
- * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
- */
-
+﻿using MongoDB.Bson;
+using MongoDB.Driver;
+using MongoUtility.Aggregation;
+using MongoUtility.Basic;
 using System;
 using System.Collections.Generic;
-using Common;
-using MongoDB.Bson;
-using MongoDB.Driver;
-using MongoUtility.Basic;
-using MongoUtility.Security;
-using MongoUtility.Aggregation;
+using System.Linq;
 
 namespace MongoUtility.Core
 {
@@ -48,6 +38,11 @@ namespace MongoUtility.Core
         }
 
         /// <summary>
+        ///     获得密码的委托
+        /// </summary>
+        public static Func<string, string> GetPassword = null;
+
+        /// <summary>
         ///     根据config获得MongoClientSettings,同时更新一些运行时变量
         /// </summary>
         /// <param name="config"></param>
@@ -59,7 +54,7 @@ namespace MongoUtility.Core
             if (string.IsNullOrEmpty(config.ConnectionString))
             {
                 mongoClientSetting.ConnectionMode = ConnectionMode.Direct;
-                SetReadPreferenceWriteConcern(mongoClientSetting, config);
+                ReadWrite.SetReadPreferenceWriteConcern(mongoClientSetting, config);
                 //Replset时候可以不用设置吗？                    
                 mongoClientSetting.Server = new MongoServerAddress(config.Host, config.Port);
                 //MapReduce的时候将消耗大量时间。不过这里需要平衡一下，太长容易造成并发问题
@@ -72,16 +67,14 @@ namespace MongoUtility.Core
                 {
                     mongoClientSetting.ConnectTimeout = new TimeSpan(0, 0, (int)(config.ConnectTimeoutMs / 1000));
                 }
-                //                if (SystemConfig.configHelperInstance.wtimeoutMS != 0)
-                //                {
-                //                    mongoClientSetting.WaitQueueTimeout = new TimeSpan(0, 0, (int)(SystemConfig.configHelperInstance.wtimeoutMS / 1000));
-                //                }
-                //                if (SystemConfig.configHelperInstance.WaitQueueSize != 0)
-                //                {
-                //                    mongoClientSetting.WaitQueueSize = SystemConfig.configHelperInstance.WaitQueueSize;
-                //                }
                 //运行时LoginAsAdmin的设定
                 config.LoginAsAdmin = config.DataBaseName == string.Empty;
+
+                if (config.InputPasswordOnConnect && config.Password == string.Empty && GetPassword != null)
+                {
+                    config.Password = GetPassword(config.UserName);
+                }
+
                 if (!(string.IsNullOrEmpty(config.UserName) || string.IsNullOrEmpty(config.Password)))
                 {
                     //认证的设定:注意，这里的密码是明文
@@ -109,6 +102,7 @@ namespace MongoUtility.Core
                         }
                     }
                 }
+
                 //X509
                 if (!string.IsNullOrEmpty(config.UserName))
                 {
@@ -117,6 +111,7 @@ namespace MongoUtility.Core
                         mongoClientSetting.Credentials = new[] { MongoCredential.CreateMongoX509Credential(config.UserName) };
                     }
                 }
+
                 //ReplSetName
                 if (!string.IsNullOrEmpty(config.ReplSetName))
                 {
@@ -169,64 +164,6 @@ namespace MongoUtility.Core
             return mongoClientSetting;
         }
 
-        /// <summary>
-        ///     Set ReadPreference And WriteConcern
-        /// </summary>
-        /// <param name="clientsettings"></param>
-        /// <param name="config"></param>
-        private static void SetReadPreferenceWriteConcern(MongoClientSettings clientsettings,
-            MongoConnectionConfig config)
-        {
-            if (config.ReadPreference == ReadPreference.Primary.ToString())
-            {
-                clientsettings.ReadPreference = ReadPreference.Primary;
-            }
-            if (config.ReadPreference == ReadPreference.PrimaryPreferred.ToString())
-            {
-                clientsettings.ReadPreference = ReadPreference.PrimaryPreferred;
-            }
-            if (config.ReadPreference == ReadPreference.Secondary.ToString())
-            {
-                clientsettings.ReadPreference = ReadPreference.Secondary;
-            }
-            if (config.ReadPreference == ReadPreference.SecondaryPreferred.ToString())
-            {
-                clientsettings.ReadPreference = ReadPreference.SecondaryPreferred;
-            }
-            if (config.ReadPreference == ReadPreference.Nearest.ToString())
-            {
-                clientsettings.ReadPreference = ReadPreference.Nearest;
-            }
-            //Default ReadPreference is Primary
-            //安全模式
-            if (config.WriteConcern == WriteConcern.Unacknowledged.ToString())
-            {
-                clientsettings.WriteConcern = WriteConcern.Unacknowledged;
-            }
-            if (config.WriteConcern == WriteConcern.Acknowledged.ToString())
-            {
-                clientsettings.WriteConcern = WriteConcern.Acknowledged;
-            }
-            if (config.WriteConcern == WriteConcern.W2.ToString())
-            {
-                clientsettings.WriteConcern = WriteConcern.W2;
-            }
-            if (config.WriteConcern == WriteConcern.W3.ToString())
-            {
-                clientsettings.WriteConcern = WriteConcern.W3;
-            }
-            //remove from mongodrvier 2.0.0
-            //if (config.WriteConcern == WriteConcern.W4.ToString())
-            //{
-            //    mongoSvrSetting.WriteConcern = WriteConcern.W4;
-            //}
-            if (config.WriteConcern == WriteConcern.WMajority.ToString())
-            {
-                clientsettings.WriteConcern = WriteConcern.WMajority;
-            }
-            //Default WriteConcern is w=0
-        }
-
         #endregion
 
         #region"系统状态"
@@ -256,7 +193,7 @@ namespace MongoUtility.Core
         /// <summary>
         ///     用户列表
         /// </summary>
-        public static Dictionary<string, EachDatabaseUser> MongoUserLst = new Dictionary<string, EachDatabaseUser>();
+        //public static Dictionary<string, EachDatabaseUser> MongoUserLst = new Dictionary<string, EachDatabaseUser>();
 
         /// <summary>
         ///     数据过滤器
@@ -300,6 +237,7 @@ namespace MongoUtility.Core
         public static void RemoveConnectionConfig(string connectionName)
         {
             MongoConnSvrLst.Remove(connectionName);
+            MongoConnClientLst.Remove(connectionName);
         }
 
         /// <summary>
@@ -339,6 +277,33 @@ namespace MongoUtility.Core
         }
 
         /// <summary>
+        ///     获得当前数据集信息
+        /// </summary>
+        /// <returns></returns>
+        public static BsonDocument GetCurrentCollectionInfo()
+        {
+            return ConnectionInfo.GetCollectionInfo(GetCurrentClient(), GetCurrentDataBaseName(), GetCurrentCollectionName());
+        }
+
+        /// <summary>
+        ///     设定当前数据集
+        /// </summary>
+        /// <param name="CollectionName"></param>
+        public static void SetCurrentCollection(string CollectionName)
+        {
+            var t = SelectObjectTag.Split("/".ToCharArray());
+            if (t.Length == 3)
+            {
+                SelectObjectTag += "/" + CollectionName;
+            }
+            else
+            {
+                t[3] = CollectionName;
+                SelectObjectTag = string.Join("/", t);
+            }
+        }
+
+        /// <summary>
         ///     获得当前数据集
         /// </summary>
         /// <returns></returns>
@@ -357,6 +322,7 @@ namespace MongoUtility.Core
         }
 
         /// <summary>
+        ///     获得当前数据集名称
         /// </summary>
         /// <returns></returns>
         public static string GetCurrentCollectionName()
@@ -365,11 +331,32 @@ namespace MongoUtility.Core
         }
 
         /// <summary>
+        ///     获得当前数据集全称
         /// </summary>
         /// <returns></returns>
         public static string GetCurrentCollectionFullName()
         {
             return GetMongoCollectionBySvrPath(SelectObjectTag, GetCurrentDataBase()).FullName;
+        }
+
+        /// <summary>
+        ///     获得当前数据库View名称列表
+        /// </summary>
+        /// <returns></returns>
+        public static List<string> GetCurrentDBViewNameList()
+        {
+            var Database = GetCurrentDataBase();
+            var ViewList = new List<string>();
+            if (Database.CollectionExists(ConstMgr.CollectionNameSystemViews))
+            {
+                var Col = Database.GetCollection(ConstMgr.CollectionNameSystemViews);
+                ViewList = Col.FindAll().ToList().Select(x =>
+                {
+                    var id = x.GetElement(ConstMgr.KeyId).Value.ToString();
+                    return id.Substring(id.IndexOf(".") + 1);
+                }).ToList();
+            }
+            return ViewList;
         }
 
         /// <summary>
@@ -573,9 +560,9 @@ namespace MongoUtility.Core
             {
                 var strSvrPath = TagInfo.GetTagPath(strObjTag);
                 var strPathArray = strSvrPath.Split("/".ToCharArray());
-                if (strPathArray.Length > (int)EnumMgr.PathLevel.Collection)
+                if (strPathArray.Length > (int)EnumMgr.PathLevel.CollectionAndView)
                 {
-                    rtnMongoCollection = mongoDb.GetCollection(strPathArray[(int)EnumMgr.PathLevel.Collection]);
+                    rtnMongoCollection = mongoDb.GetCollection(strPathArray[(int)EnumMgr.PathLevel.CollectionAndView]);
                 }
             }
             return rtnMongoCollection;
@@ -610,10 +597,10 @@ namespace MongoUtility.Core
             {
                 var strSvrPath = TagInfo.GetTagPath(strObjTag);
                 var strPathArray = strSvrPath.Split("/".ToCharArray());
-                if (strPathArray.Length > (int)EnumMgr.PathLevel.Collection)
+                if (strPathArray.Length > (int)EnumMgr.PathLevel.CollectionAndView)
                 {
                     rtnMongoCollection =
-                        mongoDb.GetCollection<BsonDocument>(strPathArray[(int)EnumMgr.PathLevel.Collection]);
+                        mongoDb.GetCollection<BsonDocument>(strPathArray[(int)EnumMgr.PathLevel.CollectionAndView]);
                 }
             }
             return rtnMongoCollection;
@@ -644,28 +631,19 @@ namespace MongoUtility.Core
             for (var i = 0; i < configLst.Count; i++)
             {
                 var config = configLst[i];
-                try
+                //Client
+                if (MongoConnClientLst.ContainsKey(config.ConnectionName))
                 {
-                    //Legacy Server
-                    if (MongoConnSvrLst.ContainsKey(config.ConnectionName))
-                    {
-                        MongoConnSvrLst.Remove(config.ConnectionName);
-                    }
-                    MongoConnSvrLst.Add(config.ConnectionName, CreateMongoServer(ref config));
-                    //Client
-                    if (MongoConnClientLst.ContainsKey(config.ConnectionName))
-                    {
-                        MongoConnClientLst.Remove(config.ConnectionName);
-                    }
-                    MongoConnClientLst.Add(config.ConnectionName, CreateMongoClient(ref config));
-
-                    //更新一些运行时的变量
-                    //SystemConfig.config.ConnectionList[config.ConnectionName] = config;
+                    MongoConnClientLst.Remove(config.ConnectionName);
                 }
-                catch (Exception ex)
+                var client = CreateMongoClient(ref config);
+                MongoConnClientLst.Add(config.ConnectionName, client);
+                //Legacy Server
+                if (MongoConnSvrLst.ContainsKey(config.ConnectionName))
                 {
-                    Utility.ExceptionDeal(ex, "Exception", "Can't Connect to Server：" + config.ConnectionName);
+                    MongoConnSvrLst.Remove(config.ConnectionName);
                 }
+                MongoConnSvrLst.Add(config.ConnectionName, client.GetServer());
             }
         }
 

@@ -51,6 +51,7 @@ namespace FunctionForm.Connection
             this.tabConnection = new System.Windows.Forms.TabControl();
             this.tabBasic = new System.Windows.Forms.TabPage();
             this.lblAttentionPassword = new System.Windows.Forms.Label();
+            this.tabConnString = new System.Windows.Forms.TabPage();
             this.tabReplicaSet = new System.Windows.Forms.TabPage();
             this.cmdRemoveHost = new System.Windows.Forms.Button();
             this.intReplPort = new System.Windows.Forms.NumericUpDown();
@@ -61,8 +62,7 @@ namespace FunctionForm.Connection
             this.lstHost = new System.Windows.Forms.ListBox();
             this.lblReplsetNameDescription = new System.Windows.Forms.Label();
             this.lblMainReplsetName = new System.Windows.Forms.Label();
-            this.txtReplsetName = new System.Windows.Forms.TextBox();
-            this.tabConnString = new System.Windows.Forms.TabPage();
+            this.txtReplSetName = new System.Windows.Forms.TextBox();
             this.tabReadWrite = new System.Windows.Forms.TabPage();
             this.ConnectionReadWrite = new FunctionForm.Connection.CtlReadWriteConfig();
             this.tabOptional = new System.Windows.Forms.TabPage();
@@ -81,23 +81,24 @@ namespace FunctionForm.Connection
             this.ctlSSHConfig1 = new FunctionForm.Connection.CtlSshConfig();
             this.tabSSL = new System.Windows.Forms.TabPage();
             this.ctlSSLConfig1 = new FunctionForm.Connection.CtlSslConfig();
-            this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.tabAuthMechanism = new System.Windows.Forms.TabPage();
             this.radMONGODB_X509 = new System.Windows.Forms.RadioButton();
             this.radMONGODB_CR = new System.Windows.Forms.RadioButton();
             this.radSCRAM_SHA_1 = new System.Windows.Forms.RadioButton();
+            this.chkInputPasswordOnConnect = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.intPort)).BeginInit();
             this.tabConnection.SuspendLayout();
             this.tabBasic.SuspendLayout();
+            this.tabConnString.SuspendLayout();
             this.tabReplicaSet.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.intReplPort)).BeginInit();
-            this.tabConnString.SuspendLayout();
             this.tabReadWrite.SuspendLayout();
             this.tabOptional.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dblConnectTimeOut)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dblSocketTimeOut)).BeginInit();
             this.tabSSH.SuspendLayout();
             this.tabSSL.SuspendLayout();
-            this.tabPage1.SuspendLayout();
+            this.tabAuthMechanism.SuspendLayout();
             this.SuspendLayout();
             // 
             // cmdCancel
@@ -107,7 +108,7 @@ namespace FunctionForm.Connection
             this.cmdCancel.Name = "cmdCancel";
             this.cmdCancel.Size = new System.Drawing.Size(98, 31);
             this.cmdCancel.TabIndex = 3;
-            this.cmdCancel.Tag = "Common_Cancel";
+            this.cmdCancel.Tag = "Common.Cancel";
             this.cmdCancel.Text = "Cancel";
             this.cmdCancel.UseVisualStyleBackColor = false;
             // 
@@ -118,7 +119,7 @@ namespace FunctionForm.Connection
             this.cmdAdd.Name = "cmdAdd";
             this.cmdAdd.Size = new System.Drawing.Size(98, 31);
             this.cmdAdd.TabIndex = 1;
-            this.cmdAdd.Tag = "Common_Add";
+            this.cmdAdd.Tag = "Common.Add";
             this.cmdAdd.Text = "Add";
             this.cmdAdd.UseVisualStyleBackColor = false;
             this.cmdAdd.Click += new System.EventHandler(this.cmdAdd_Click);
@@ -129,9 +130,9 @@ namespace FunctionForm.Connection
             this.lblPassword.BackColor = System.Drawing.Color.Transparent;
             this.lblPassword.Location = new System.Drawing.Point(228, 69);
             this.lblPassword.Name = "lblPassword";
-            this.lblPassword.Size = new System.Drawing.Size(61, 15);
+            this.lblPassword.Size = new System.Drawing.Size(63, 15);
             this.lblPassword.TabIndex = 8;
-            this.lblPassword.Tag = "Common_Password";
+            this.lblPassword.Tag = "Common.Password";
             this.lblPassword.Text = "Password";
             // 
             // lblUsername
@@ -140,56 +141,56 @@ namespace FunctionForm.Connection
             this.lblUsername.BackColor = System.Drawing.Color.Transparent;
             this.lblUsername.Location = new System.Drawing.Point(22, 69);
             this.lblUsername.Name = "lblUsername";
-            this.lblUsername.Size = new System.Drawing.Size(67, 15);
+            this.lblUsername.Size = new System.Drawing.Size(69, 15);
             this.lblUsername.TabIndex = 6;
-            this.lblUsername.Tag = "Common_Username";
+            this.lblUsername.Tag = "Common.Username";
             this.lblUsername.Text = "UserName";
             // 
             // lblPort
             // 
             this.lblPort.AutoSize = true;
             this.lblPort.BackColor = System.Drawing.Color.Transparent;
-            this.lblPort.Location = new System.Drawing.Point(422, 37);
+            this.lblPort.Location = new System.Drawing.Point(228, 30);
             this.lblPort.Name = "lblPort";
-            this.lblPort.Size = new System.Drawing.Size(29, 15);
+            this.lblPort.Size = new System.Drawing.Size(31, 15);
             this.lblPort.TabIndex = 4;
-            this.lblPort.Tag = "Common_Port";
+            this.lblPort.Tag = "Common.Port";
             this.lblPort.Text = "Port";
             // 
             // lblConnectionName
             // 
             this.lblConnectionName.AutoSize = true;
             this.lblConnectionName.BackColor = System.Drawing.Color.Transparent;
-            this.lblConnectionName.Location = new System.Drawing.Point(20, 38);
+            this.lblConnectionName.Location = new System.Drawing.Point(94, 245);
             this.lblConnectionName.Name = "lblConnectionName";
-            this.lblConnectionName.Size = new System.Drawing.Size(69, 15);
+            this.lblConnectionName.Size = new System.Drawing.Size(111, 15);
             this.lblConnectionName.TabIndex = 0;
             this.lblConnectionName.Tag = "AddConnection_ConnectionName";
-            this.lblConnectionName.Text = "Connection";
+            this.lblConnectionName.Text = "Connection Name";
             // 
             // lblHost
             // 
             this.lblHost.AutoSize = true;
             this.lblHost.BackColor = System.Drawing.Color.Transparent;
-            this.lblHost.Location = new System.Drawing.Point(228, 34);
+            this.lblHost.Location = new System.Drawing.Point(22, 30);
             this.lblHost.Name = "lblHost";
-            this.lblHost.Size = new System.Drawing.Size(32, 15);
+            this.lblHost.Size = new System.Drawing.Size(34, 15);
             this.lblHost.TabIndex = 1;
-            this.lblHost.Tag = "Common_Host";
+            this.lblHost.Tag = "Common.Host";
             this.lblHost.Text = "Host";
             // 
             // txtConnectionName
             // 
-            this.txtConnectionName.Location = new System.Drawing.Point(102, 32);
+            this.txtConnectionName.Location = new System.Drawing.Point(206, 242);
             this.txtConnectionName.Name = "txtConnectionName";
-            this.txtConnectionName.Size = new System.Drawing.Size(119, 21);
+            this.txtConnectionName.Size = new System.Drawing.Size(119, 23);
             this.txtConnectionName.TabIndex = 0;
             // 
             // txtPassword
             // 
             this.txtPassword.Location = new System.Drawing.Point(294, 63);
             this.txtPassword.Name = "txtPassword";
-            this.txtPassword.Size = new System.Drawing.Size(119, 21);
+            this.txtPassword.Size = new System.Drawing.Size(119, 23);
             this.txtPassword.TabIndex = 4;
             this.txtPassword.UseSystemPasswordChar = true;
             // 
@@ -197,32 +198,32 @@ namespace FunctionForm.Connection
             // 
             this.txtUsername.Location = new System.Drawing.Point(102, 63);
             this.txtUsername.Name = "txtUsername";
-            this.txtUsername.Size = new System.Drawing.Size(119, 21);
+            this.txtUsername.Size = new System.Drawing.Size(119, 23);
             this.txtUsername.TabIndex = 3;
             // 
             // txtHost
             // 
             this.txtHost.ImeMode = System.Windows.Forms.ImeMode.Disable;
-            this.txtHost.Location = new System.Drawing.Point(294, 28);
+            this.txtHost.Location = new System.Drawing.Point(102, 24);
             this.txtHost.Name = "txtHost";
-            this.txtHost.Size = new System.Drawing.Size(119, 21);
+            this.txtHost.Size = new System.Drawing.Size(119, 23);
             this.txtHost.TabIndex = 1;
             // 
             // lblDataBaseName
             // 
             this.lblDataBaseName.AutoSize = true;
-            this.lblDataBaseName.Location = new System.Drawing.Point(423, 69);
+            this.lblDataBaseName.Location = new System.Drawing.Point(22, 110);
             this.lblDataBaseName.Name = "lblDataBaseName";
-            this.lblDataBaseName.Size = new System.Drawing.Size(60, 15);
+            this.lblDataBaseName.Size = new System.Drawing.Size(62, 15);
             this.lblDataBaseName.TabIndex = 10;
             this.lblDataBaseName.Tag = "AddConnection_DBName";
             this.lblDataBaseName.Text = "Database";
             // 
             // txtDataBaseName
             // 
-            this.txtDataBaseName.Location = new System.Drawing.Point(502, 63);
+            this.txtDataBaseName.Location = new System.Drawing.Point(102, 107);
             this.txtDataBaseName.Name = "txtDataBaseName";
-            this.txtDataBaseName.Size = new System.Drawing.Size(119, 21);
+            this.txtDataBaseName.Size = new System.Drawing.Size(119, 23);
             this.txtDataBaseName.TabIndex = 5;
             // 
             // txtConnectionString
@@ -238,31 +239,32 @@ namespace FunctionForm.Connection
             this.lblConnectionString.AutoSize = true;
             this.lblConnectionString.Location = new System.Drawing.Point(6, 13);
             this.lblConnectionString.Name = "lblConnectionString";
-            this.lblConnectionString.Size = new System.Drawing.Size(172, 15);
+            this.lblConnectionString.Size = new System.Drawing.Size(182, 15);
             this.lblConnectionString.TabIndex = 16;
             this.lblConnectionString.Tag = "AddConnection_ConnectionString";
             this.lblConnectionString.Text = "Use ConnectionString Directly:";
             // 
             // intPort
             // 
-            this.intPort.Location = new System.Drawing.Point(501, 27);
+            this.intPort.Location = new System.Drawing.Point(295, 23);
             this.intPort.Maximum = new decimal(new int[] {
             65535,
             0,
             0,
             0});
             this.intPort.Name = "intPort";
-            this.intPort.Size = new System.Drawing.Size(118, 21);
+            this.intPort.Size = new System.Drawing.Size(118, 23);
             this.intPort.TabIndex = 2;
             this.intPort.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
             // cmdTest
             // 
+            this.cmdTest.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.cmdTest.Location = new System.Drawing.Point(331, 237);
             this.cmdTest.Name = "cmdTest";
             this.cmdTest.Size = new System.Drawing.Size(143, 31);
             this.cmdTest.TabIndex = 2;
-            this.cmdTest.Tag = "Common_Test";
+            this.cmdTest.Tag = "Common.Test";
             this.cmdTest.Text = "Test Connection";
             this.cmdTest.UseVisualStyleBackColor = true;
             this.cmdTest.Click += new System.EventHandler(this.cmdTest_Click);
@@ -270,13 +272,13 @@ namespace FunctionForm.Connection
             // tabConnection
             // 
             this.tabConnection.Controls.Add(this.tabBasic);
-            this.tabConnection.Controls.Add(this.tabReplicaSet);
             this.tabConnection.Controls.Add(this.tabConnString);
+            this.tabConnection.Controls.Add(this.tabReplicaSet);
             this.tabConnection.Controls.Add(this.tabReadWrite);
             this.tabConnection.Controls.Add(this.tabOptional);
             this.tabConnection.Controls.Add(this.tabSSH);
             this.tabConnection.Controls.Add(this.tabSSL);
-            this.tabConnection.Controls.Add(this.tabPage1);
+            this.tabConnection.Controls.Add(this.tabAuthMechanism);
             this.tabConnection.Location = new System.Drawing.Point(12, 12);
             this.tabConnection.Name = "tabConnection";
             this.tabConnection.SelectedIndex = 0;
@@ -285,9 +287,9 @@ namespace FunctionForm.Connection
             // 
             // tabBasic
             // 
+            this.tabBasic.Controls.Add(this.chkInputPasswordOnConnect);
             this.tabBasic.Controls.Add(this.lblAttentionPassword);
             this.tabBasic.Controls.Add(this.intPort);
-            this.tabBasic.Controls.Add(this.lblConnectionName);
             this.tabBasic.Controls.Add(this.txtDataBaseName);
             this.tabBasic.Controls.Add(this.lblPort);
             this.tabBasic.Controls.Add(this.lblDataBaseName);
@@ -297,7 +299,6 @@ namespace FunctionForm.Connection
             this.tabBasic.Controls.Add(this.txtUsername);
             this.tabBasic.Controls.Add(this.lblHost);
             this.tabBasic.Controls.Add(this.txtPassword);
-            this.tabBasic.Controls.Add(this.txtConnectionName);
             this.tabBasic.Location = new System.Drawing.Point(4, 24);
             this.tabBasic.Name = "tabBasic";
             this.tabBasic.Padding = new System.Windows.Forms.Padding(3);
@@ -311,12 +312,24 @@ namespace FunctionForm.Connection
             this.lblAttentionPassword.AutoSize = true;
             this.lblAttentionPassword.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblAttentionPassword.ForeColor = System.Drawing.Color.Red;
-            this.lblAttentionPassword.Location = new System.Drawing.Point(22, 105);
+            this.lblAttentionPassword.Location = new System.Drawing.Point(14, 157);
             this.lblAttentionPassword.Name = "lblAttentionPassword";
             this.lblAttentionPassword.Size = new System.Drawing.Size(295, 13);
             this.lblAttentionPassword.TabIndex = 47;
             this.lblAttentionPassword.Tag = "AddConnection_Password_Description";
             this.lblAttentionPassword.Text = "Password is saved in config file without Encryption";
+            // 
+            // tabConnString
+            // 
+            this.tabConnString.Controls.Add(this.lblConnectionString);
+            this.tabConnString.Controls.Add(this.txtConnectionString);
+            this.tabConnString.Location = new System.Drawing.Point(4, 24);
+            this.tabConnString.Name = "tabConnString";
+            this.tabConnString.Padding = new System.Windows.Forms.Padding(3);
+            this.tabConnString.Size = new System.Drawing.Size(665, 191);
+            this.tabConnString.TabIndex = 1;
+            this.tabConnString.Text = "Connection String";
+            this.tabConnString.UseVisualStyleBackColor = true;
             // 
             // tabReplicaSet
             // 
@@ -329,7 +342,7 @@ namespace FunctionForm.Connection
             this.tabReplicaSet.Controls.Add(this.lstHost);
             this.tabReplicaSet.Controls.Add(this.lblReplsetNameDescription);
             this.tabReplicaSet.Controls.Add(this.lblMainReplsetName);
-            this.tabReplicaSet.Controls.Add(this.txtReplsetName);
+            this.tabReplicaSet.Controls.Add(this.txtReplSetName);
             this.tabReplicaSet.Location = new System.Drawing.Point(4, 24);
             this.tabReplicaSet.Name = "tabReplicaSet";
             this.tabReplicaSet.Size = new System.Drawing.Size(665, 191);
@@ -357,7 +370,7 @@ namespace FunctionForm.Connection
             0,
             0});
             this.intReplPort.Name = "intReplPort";
-            this.intReplPort.Size = new System.Drawing.Size(118, 21);
+            this.intReplPort.Size = new System.Drawing.Size(118, 23);
             this.intReplPort.TabIndex = 2;
             this.intReplPort.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
@@ -367,9 +380,9 @@ namespace FunctionForm.Connection
             this.lblReplPort.BackColor = System.Drawing.Color.Transparent;
             this.lblReplPort.Location = new System.Drawing.Point(27, 114);
             this.lblReplPort.Name = "lblReplPort";
-            this.lblReplPort.Size = new System.Drawing.Size(29, 15);
+            this.lblReplPort.Size = new System.Drawing.Size(31, 15);
             this.lblReplPort.TabIndex = 35;
-            this.lblReplPort.Tag = "Common_Port";
+            this.lblReplPort.Tag = "Common.Port";
             this.lblReplPort.Text = "Port";
             // 
             // txtReplHost
@@ -377,7 +390,7 @@ namespace FunctionForm.Connection
             this.txtReplHost.ImeMode = System.Windows.Forms.ImeMode.Disable;
             this.txtReplHost.Location = new System.Drawing.Point(93, 86);
             this.txtReplHost.Name = "txtReplHost";
-            this.txtReplHost.Size = new System.Drawing.Size(119, 21);
+            this.txtReplHost.Size = new System.Drawing.Size(119, 23);
             this.txtReplHost.TabIndex = 1;
             // 
             // lblReplHost
@@ -386,9 +399,9 @@ namespace FunctionForm.Connection
             this.lblReplHost.BackColor = System.Drawing.Color.Transparent;
             this.lblReplHost.Location = new System.Drawing.Point(27, 86);
             this.lblReplHost.Name = "lblReplHost";
-            this.lblReplHost.Size = new System.Drawing.Size(32, 15);
+            this.lblReplHost.Size = new System.Drawing.Size(34, 15);
             this.lblReplHost.TabIndex = 33;
-            this.lblReplHost.Tag = "Common_Host";
+            this.lblReplHost.Tag = "Common.Host";
             this.lblReplHost.Text = "Host";
             // 
             // cmdAddHost
@@ -426,29 +439,17 @@ namespace FunctionForm.Connection
             this.lblMainReplsetName.AutoSize = true;
             this.lblMainReplsetName.Location = new System.Drawing.Point(27, 25);
             this.lblMainReplsetName.Name = "lblMainReplsetName";
-            this.lblMainReplsetName.Size = new System.Drawing.Size(83, 15);
+            this.lblMainReplsetName.Size = new System.Drawing.Size(85, 15);
             this.lblMainReplsetName.TabIndex = 28;
             this.lblMainReplsetName.Tag = "AddConnection_MainReplsetName";
             this.lblMainReplsetName.Text = "ReplsetName";
             // 
-            // txtReplsetName
+            // txtReplSetName
             // 
-            this.txtReplsetName.Location = new System.Drawing.Point(122, 23);
-            this.txtReplsetName.Name = "txtReplsetName";
-            this.txtReplsetName.Size = new System.Drawing.Size(149, 21);
-            this.txtReplsetName.TabIndex = 0;
-            // 
-            // tabConnString
-            // 
-            this.tabConnString.Controls.Add(this.lblConnectionString);
-            this.tabConnString.Controls.Add(this.txtConnectionString);
-            this.tabConnString.Location = new System.Drawing.Point(4, 24);
-            this.tabConnString.Name = "tabConnString";
-            this.tabConnString.Padding = new System.Windows.Forms.Padding(3);
-            this.tabConnString.Size = new System.Drawing.Size(665, 191);
-            this.tabConnString.TabIndex = 1;
-            this.tabConnString.Text = "Connection String";
-            this.tabConnString.UseVisualStyleBackColor = true;
+            this.txtReplSetName.Location = new System.Drawing.Point(122, 23);
+            this.txtReplSetName.Name = "txtReplSetName";
+            this.txtReplSetName.Size = new System.Drawing.Size(149, 23);
+            this.txtReplSetName.TabIndex = 0;
             // 
             // tabReadWrite
             // 
@@ -493,7 +494,7 @@ namespace FunctionForm.Connection
             // cmbStorageEngine
             // 
             this.cmbStorageEngine.FormattingEnabled = true;
-            this.cmbStorageEngine.Location = new System.Drawing.Point(143, 114);
+            this.cmbStorageEngine.Location = new System.Drawing.Point(119, 117);
             this.cmbStorageEngine.Name = "cmbStorageEngine";
             this.cmbStorageEngine.Size = new System.Drawing.Size(121, 23);
             this.cmbStorageEngine.TabIndex = 57;
@@ -503,7 +504,7 @@ namespace FunctionForm.Connection
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(24, 120);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(89, 15);
+            this.label1.Size = new System.Drawing.Size(92, 15);
             this.label1.TabIndex = 56;
             this.label1.Text = "StorageEngine";
             // 
@@ -512,7 +513,7 @@ namespace FunctionForm.Connection
             this.chkVerifySslCertificate.AutoSize = true;
             this.chkVerifySslCertificate.Location = new System.Drawing.Point(253, 85);
             this.chkVerifySslCertificate.Name = "chkVerifySslCertificate";
-            this.chkVerifySslCertificate.Size = new System.Drawing.Size(126, 19);
+            this.chkVerifySslCertificate.Size = new System.Drawing.Size(133, 19);
             this.chkVerifySslCertificate.TabIndex = 55;
             this.chkVerifySslCertificate.Text = "VerifySslCertificate";
             this.chkVerifySslCertificate.UseVisualStyleBackColor = true;
@@ -522,7 +523,7 @@ namespace FunctionForm.Connection
             this.chkUseSsl.AutoSize = true;
             this.chkUseSsl.Location = new System.Drawing.Point(174, 85);
             this.chkUseSsl.Name = "chkUseSsl";
-            this.chkUseSsl.Size = new System.Drawing.Size(65, 19);
+            this.chkUseSsl.Size = new System.Drawing.Size(64, 19);
             this.chkUseSsl.TabIndex = 54;
             this.chkUseSsl.Text = "UseSsl";
             this.chkUseSsl.UseVisualStyleBackColor = true;
@@ -532,7 +533,7 @@ namespace FunctionForm.Connection
             this.chkJournal.AutoSize = true;
             this.chkJournal.Location = new System.Drawing.Point(104, 85);
             this.chkJournal.Name = "chkJournal";
-            this.chkJournal.Size = new System.Drawing.Size(64, 19);
+            this.chkJournal.Size = new System.Drawing.Size(66, 19);
             this.chkJournal.TabIndex = 51;
             this.chkJournal.Text = "journal";
             this.chkJournal.UseVisualStyleBackColor = true;
@@ -542,7 +543,7 @@ namespace FunctionForm.Connection
             this.chkFsync.AutoSize = true;
             this.chkFsync.Location = new System.Drawing.Point(27, 85);
             this.chkFsync.Name = "chkFsync";
-            this.chkFsync.Size = new System.Drawing.Size(53, 19);
+            this.chkFsync.Size = new System.Drawing.Size(55, 19);
             this.chkFsync.TabIndex = 50;
             this.chkFsync.Text = "fsync";
             this.chkFsync.UseVisualStyleBackColor = true;
@@ -556,7 +557,7 @@ namespace FunctionForm.Connection
             0,
             0});
             this.dblConnectTimeOut.Name = "dblConnectTimeOut";
-            this.dblConnectTimeOut.Size = new System.Drawing.Size(76, 21);
+            this.dblConnectTimeOut.Size = new System.Drawing.Size(76, 23);
             this.dblConnectTimeOut.TabIndex = 49;
             this.dblConnectTimeOut.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
@@ -569,7 +570,7 @@ namespace FunctionForm.Connection
             0,
             0});
             this.dblSocketTimeOut.Name = "dblSocketTimeOut";
-            this.dblSocketTimeOut.Size = new System.Drawing.Size(76, 21);
+            this.dblSocketTimeOut.Size = new System.Drawing.Size(76, 23);
             this.dblSocketTimeOut.TabIndex = 48;
             this.dblSocketTimeOut.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
@@ -578,7 +579,7 @@ namespace FunctionForm.Connection
             this.lblConnectTimeout.AutoSize = true;
             this.lblConnectTimeout.Location = new System.Drawing.Point(250, 56);
             this.lblConnectTimeout.Name = "lblConnectTimeout";
-            this.lblConnectTimeout.Size = new System.Drawing.Size(122, 15);
+            this.lblConnectTimeout.Size = new System.Drawing.Size(126, 15);
             this.lblConnectTimeout.TabIndex = 52;
             this.lblConnectTimeout.Tag = "AddConnection_ConnectionTimeOut";
             this.lblConnectTimeout.Text = "connectTimeout(MS)";
@@ -588,7 +589,7 @@ namespace FunctionForm.Connection
             this.lblsocketTimeout.AutoSize = true;
             this.lblsocketTimeout.Location = new System.Drawing.Point(24, 59);
             this.lblsocketTimeout.Name = "lblsocketTimeout";
-            this.lblsocketTimeout.Size = new System.Drawing.Size(114, 15);
+            this.lblsocketTimeout.Size = new System.Drawing.Size(119, 15);
             this.lblsocketTimeout.TabIndex = 53;
             this.lblsocketTimeout.Tag = "AddConnection_SocketTimeOut";
             this.lblsocketTimeout.Text = "socketTimeout(MS)";
@@ -598,7 +599,7 @@ namespace FunctionForm.Connection
             this.label7.AutoSize = true;
             this.label7.Location = new System.Drawing.Point(24, 33);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(433, 15);
+            this.label7.Size = new System.Drawing.Size(479, 15);
             this.label7.TabIndex = 47;
             this.label7.Text = "If you want to connect to a replSet please  fill  replset information at  replset" +
     " tab.";
@@ -642,25 +643,25 @@ namespace FunctionForm.Connection
             this.ctlSSLConfig1.Size = new System.Drawing.Size(659, 185);
             this.ctlSSLConfig1.TabIndex = 0;
             // 
-            // tabPage1
+            // tabAuthMechanism
             // 
-            this.tabPage1.Controls.Add(this.radMONGODB_X509);
-            this.tabPage1.Controls.Add(this.radMONGODB_CR);
-            this.tabPage1.Controls.Add(this.radSCRAM_SHA_1);
-            this.tabPage1.Location = new System.Drawing.Point(4, 24);
-            this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(665, 191);
-            this.tabPage1.TabIndex = 8;
-            this.tabPage1.Text = "AuthMechanism";
-            this.tabPage1.UseVisualStyleBackColor = true;
+            this.tabAuthMechanism.Controls.Add(this.radMONGODB_X509);
+            this.tabAuthMechanism.Controls.Add(this.radMONGODB_CR);
+            this.tabAuthMechanism.Controls.Add(this.radSCRAM_SHA_1);
+            this.tabAuthMechanism.Location = new System.Drawing.Point(4, 24);
+            this.tabAuthMechanism.Name = "tabAuthMechanism";
+            this.tabAuthMechanism.Padding = new System.Windows.Forms.Padding(3);
+            this.tabAuthMechanism.Size = new System.Drawing.Size(665, 191);
+            this.tabAuthMechanism.TabIndex = 8;
+            this.tabAuthMechanism.Text = "AuthMechanism";
+            this.tabAuthMechanism.UseVisualStyleBackColor = true;
             // 
             // radMONGODB_X509
             // 
             this.radMONGODB_X509.AutoSize = true;
             this.radMONGODB_X509.Location = new System.Drawing.Point(41, 77);
             this.radMONGODB_X509.Name = "radMONGODB_X509";
-            this.radMONGODB_X509.Size = new System.Drawing.Size(122, 19);
+            this.radMONGODB_X509.Size = new System.Drawing.Size(127, 19);
             this.radMONGODB_X509.TabIndex = 0;
             this.radMONGODB_X509.Text = "MONGODB-X509";
             this.radMONGODB_X509.UseVisualStyleBackColor = true;
@@ -670,7 +671,7 @@ namespace FunctionForm.Connection
             this.radMONGODB_CR.AutoSize = true;
             this.radMONGODB_CR.Location = new System.Drawing.Point(41, 52);
             this.radMONGODB_CR.Name = "radMONGODB_CR";
-            this.radMONGODB_CR.Size = new System.Drawing.Size(110, 19);
+            this.radMONGODB_CR.Size = new System.Drawing.Size(114, 19);
             this.radMONGODB_CR.TabIndex = 0;
             this.radMONGODB_CR.Text = "MONGODB-CR";
             this.radMONGODB_CR.UseVisualStyleBackColor = true;
@@ -681,11 +682,22 @@ namespace FunctionForm.Connection
             this.radSCRAM_SHA_1.Checked = true;
             this.radSCRAM_SHA_1.Location = new System.Drawing.Point(41, 27);
             this.radSCRAM_SHA_1.Name = "radSCRAM_SHA_1";
-            this.radSCRAM_SHA_1.Size = new System.Drawing.Size(154, 19);
+            this.radSCRAM_SHA_1.Size = new System.Drawing.Size(158, 19);
             this.radSCRAM_SHA_1.TabIndex = 0;
             this.radSCRAM_SHA_1.TabStop = true;
             this.radSCRAM_SHA_1.Text = "Default(SCRAM-SHA-1)";
             this.radSCRAM_SHA_1.UseVisualStyleBackColor = true;
+            // 
+            // chkInputPasswordOnConnect
+            // 
+            this.chkInputPasswordOnConnect.AutoSize = true;
+            this.chkInputPasswordOnConnect.Location = new System.Drawing.Point(447, 65);
+            this.chkInputPasswordOnConnect.Name = "chkInputPasswordOnConnect";
+            this.chkInputPasswordOnConnect.Size = new System.Drawing.Size(188, 19);
+            this.chkInputPasswordOnConnect.TabIndex = 48;
+            this.chkInputPasswordOnConnect.Tag = "InputPasswordOnConnect";
+            this.chkInputPasswordOnConnect.Text = "Input Password On Connect";
+            this.chkInputPasswordOnConnect.UseVisualStyleBackColor = true;
             // 
             // FrmConnectionMgr
             // 
@@ -695,9 +707,11 @@ namespace FunctionForm.Connection
             this.ClientSize = new System.Drawing.Size(708, 285);
             this.Controls.Add(this.tabConnection);
             this.Controls.Add(this.cmdTest);
+            this.Controls.Add(this.lblConnectionName);
             this.Controls.Add(this.cmdCancel);
             this.Controls.Add(this.cmdAdd);
-            this.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Controls.Add(this.txtConnectionName);
+            this.Font = new System.Drawing.Font("Microsoft YaHei UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -710,11 +724,11 @@ namespace FunctionForm.Connection
             this.tabConnection.ResumeLayout(false);
             this.tabBasic.ResumeLayout(false);
             this.tabBasic.PerformLayout();
+            this.tabConnString.ResumeLayout(false);
+            this.tabConnString.PerformLayout();
             this.tabReplicaSet.ResumeLayout(false);
             this.tabReplicaSet.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.intReplPort)).EndInit();
-            this.tabConnString.ResumeLayout(false);
-            this.tabConnString.PerformLayout();
             this.tabReadWrite.ResumeLayout(false);
             this.tabOptional.ResumeLayout(false);
             this.tabOptional.PerformLayout();
@@ -722,9 +736,10 @@ namespace FunctionForm.Connection
             ((System.ComponentModel.ISupportInitialize)(this.dblSocketTimeOut)).EndInit();
             this.tabSSH.ResumeLayout(false);
             this.tabSSL.ResumeLayout(false);
-            this.tabPage1.ResumeLayout(false);
-            this.tabPage1.PerformLayout();
+            this.tabAuthMechanism.ResumeLayout(false);
+            this.tabAuthMechanism.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -755,7 +770,7 @@ namespace FunctionForm.Connection
         private TabPage tabConnString;
         private TabPage tabReplicaSet;
         private Label lblMainReplsetName;
-        private TextBox txtReplsetName;
+        private TextBox txtReplSetName;
         private Label lblReplsetNameDescription;
         private ListBox lstHost;
         private Button cmdAddHost;
@@ -783,9 +798,10 @@ namespace FunctionForm.Connection
         private TabPage tabSSL;
         private CtlSslConfig ctlSSLConfig1;
         private Label lblAttentionPassword;
-        private TabPage tabPage1;
+        private TabPage tabAuthMechanism;
         private RadioButton radMONGODB_CR;
         private RadioButton radSCRAM_SHA_1;
         private RadioButton radMONGODB_X509;
+        private CheckBox chkInputPasswordOnConnect;
     }
 }

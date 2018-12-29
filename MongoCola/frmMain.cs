@@ -1,30 +1,36 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Windows.Forms;
-using Common;
+﻿using Common;
+using FunctionForm.Aggregation;
 using FunctionForm.Connection;
+using FunctionForm.Extend;
 using FunctionForm.Operation;
+using FunctionForm.Status;
+using FunctionForm.User;
+using MongoGUICtl;
+using MongoGUICtl.ClientTree;
 using MongoGUIView;
 using MongoUtility.Aggregation;
 using MongoUtility.Basic;
+using MongoUtility.Command;
 using MongoUtility.Core;
 using MongoUtility.ToolKit;
-using PlugInPackage;
+using PlugInPrj;
 using ResourceLib.Method;
-using ResourceLib.Properties;
 using ResourceLib.UI;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace MongoCola
 {
-    public partial class FrmMain
+    public partial class frmMain
     {
         #region"MainForm"
 
         /// <summary>
         ///     切换Tab的时候，必须切换当前对象
         /// </summary>
-        public FrmMain()
+        public frmMain()
         {
             InitializeComponent();
             GetSystemIcon.InitMainTreeImage();
@@ -36,7 +42,7 @@ namespace MongoCola
             if (!GuiConfig.IsUseDefaultLanguage)
             {
                 //其他控件
-                statusStripMain.Items[0].Text = GuiConfig.GetText(TextType.MainStatusBarTextReady);
+                statusStripMain.Items[0].Text = GuiConfig.GetText("MainStatusBarTextReady");
             }
             //Init ToolBar
             InitToolBar();
@@ -46,12 +52,89 @@ namespace MongoCola
             {
                 Text += " MONO";
             }
+            //获得数据对象方法的注入
+            GetInject();
+        }
+
+        /// <summary>
+        ///     获得数据对象方法的注入
+        /// </summary>
+        private static void GetInject()
+        {
             //新建文档的文档获得方法注入
             CtlDocumentView._getDocument = () =>
             {
-                var frmInsertDoc = new FrmNewDocument();
-                Utility.OpenForm(frmInsertDoc, false, true);
-                return frmInsertDoc.MBsonDocument;
+                var frmInsertDoc = new frmCreateDocument();
+                UIAssistant.OpenModalForm(frmInsertDoc, false, true);
+                return frmInsertDoc.mBsonDocument;
+            };
+            ctlBsonValue.GetDocument = () =>
+            {
+                var frmInsertDoc = new frmCreateDocument();
+                UIAssistant.OpenModalForm(frmInsertDoc, false, true);
+                return frmInsertDoc.mBsonDocument;
+            };
+            ctlBsonValue.GetArray = () =>
+            {
+                var frmInsertArray = new frmArrayCreator();
+                UIAssistant.OpenModalForm(frmInsertArray, false, true);
+                return frmInsertArray.mBsonArray;
+            };
+            ctlBsonValue.GetGeoPoint = () =>
+            {
+                var frmGeo = new frmCreateGeo();
+                UIAssistant.OpenModalForm(frmGeo, false, true);
+                return frmGeo.mBsonArray;
+            };
+            frmGeoNear.GetGeo = () =>
+            {
+                var frmGeo = new frmCreateGeo();
+                UIAssistant.OpenModalForm(frmGeo, false, true);
+                return frmGeo.mBsonArray;
+            };
+
+            FrmServerMonitor.FreshTimeChanged = (time) =>
+            {
+                SystemManager.SystemConfig.RefreshStatusTimer = time;
+                SystemManager.SystemConfig.SaveSystemConfig();
+            };
+
+            FrmServerMonitor.MonitorItemsChanged = (items) =>
+            {
+                SystemManager.SystemConfig.MonitorItems = items;
+                SystemManager.SystemConfig.SaveSystemConfig();
+            };
+
+            RuntimeMongoDbContext.GetPassword = (username) =>
+            {
+                var Password = MyMessageBox.ShowPasswordInput("Please Input Password of " + username, "Password");
+                return Password;
+            };
+
+            CtlUserView.OpenAddNewUserForm = (isAdmin) =>
+            {
+                UIAssistant.OpenModalForm(new FrmUser(isAdmin), true, true);
+            };
+            CtlUserView.OpenChangePasswordForm = (isAdmin, name) =>
+            {
+                UIAssistant.OpenModalForm(new FrmUser(isAdmin, name), true, true);
+            };
+
+            CtlDocumentView.ElementOp = (isUpdate, selectedNode, isElement) =>
+            {
+                var f = new FrmElement(isUpdate, selectedNode, isElement);
+                f.ShowDialog();
+            };
+            CtlGfsView.GetUploadFileOption = () =>
+            {
+                var opt = new Gfs.UpLoadFileOption();
+                var frm = new FrmGfsOption();
+                frm.ShowDialog();
+                opt.AlreadyOpt = frm.Option;
+                opt.DirectorySeparatorChar = frm.DirectorySeparatorChar;
+                opt.FileNameOpt = frm.Filename;
+                opt.IgnoreSubFolder = frm.IgnoreSubFolder;
+                return opt;
             };
         }
 
@@ -69,26 +152,23 @@ namespace MongoCola
             //Set Tool bar button enable
             SetToolBarEnabled();
             //Open ConnectionManagement Form
-            Utility.OpenForm(new FrmConnect(), true, true);
+            UIAssistant.OpenModalForm(new frmConnect(), true, true);
 
             //多文档管理器的设定
-            var parentMenuItems = new List<ToolStripMenuItem>();
-            parentMenuItems.Add(CollectionToolStripMenuItem);
-            parentMenuItems.Add(JavaScriptStripMenuItem);
+            var parentMenuItems = new List<ToolStripMenuItem>
+            {
+                CollectionToolStripMenuItem,
+                JavaScriptStripMenuItem
+            };
             MultiTabManger.Init(tabView, parentMenuItems);
             //MultiTab固定项目的初始化
-            var serverStatusCtl = new CtlServerStatus();
-            serverStatusCtl.IsFixedItem = true;
-            serverStatusCtl.SelectObjectTag = "[ServerStatus]";
-            serverStatusCtl.BindingMenu = StatusToolStripMenuItem;
-            MultiTabManger.AddView(serverStatusCtl, "Status");
-
-            //var ctlShellCommandEditor = new CtlJsEditor();
-            //ctlShellCommandEditor.IsFixedItem = true;
-            //ctlShellCommandEditor.SelectObjectTag = "[ShellCommand]";
-            //ctlShellCommandEditor.BindingMenu = commandShellToolStripMenuItem;
-            //MultiTabManger.AddView(ctlShellCommandEditor, "ShellCommand");
-
+            var serverStatusCtl = new CtlServerStatus()
+            {
+                IsFixedItem = true,
+                SelectObjectTag = "[ServerStatus]",
+                BindingMenu = StatusToolStripMenuItem
+            };
+            MultiTabManger.AddView(serverStatusCtl, GuiConfig.IsUseDefaultLanguage ? "Status" : GuiConfig.GetText("MainMenu.MangtStatus"), string.Empty);
 
             //刷新
             RefreshToolStripMenuItem_Click(sender, e);
@@ -111,6 +191,7 @@ namespace MongoCola
                 lblAction.Text = y.Message;
                 Application.DoEvents();
             };
+            if (trvsrvlst.Nodes.Count > 0) trvsrvlst.SelectedNode = trvsrvlst.Nodes[0];
         }
 
         /// <summary>
@@ -171,11 +252,11 @@ namespace MongoCola
                     MongoConnectionConfig.MongoConfig.ConnectionList[mongoSvrKey];
                 if (string.IsNullOrEmpty(RuntimeMongoDbContext.CurrentMongoConnectionconfig.UserName))
                 {
-                    lblUserInfo.Text = "UserInfo:Admin";
+                    lblUserInfo.Text = GuiConfig.GetText("UserInfo", "UserInfo") + ":Admin";
                 }
                 else
                 {
-                    lblUserInfo.Text = "UserInfo:" + RuntimeMongoDbContext.CurrentMongoConnectionconfig.UserName;
+                    lblUserInfo.Text = GuiConfig.GetText("UserInfo", "UserInfo") + ":" + RuntimeMongoDbContext.CurrentMongoConnectionconfig.UserName;
                 }
                 if (RuntimeMongoDbContext.CurrentMongoConnectionconfig.AuthMode)
                 {
@@ -183,7 +264,7 @@ namespace MongoCola
                 }
                 if (RuntimeMongoDbContext.CurrentMongoConnectionconfig.IsReadOnly)
                 {
-                    lblUserInfo.Text += " [ReadOnly]";
+                    lblUserInfo.Text += " [" + GuiConfig.GetText("ReadOnly", "Common_ReadOnly") + "]";
                 }
                 if (!RuntimeMongoDbContext.CurrentMongoConnectionconfig.IsReadOnly)
                 {
@@ -217,27 +298,37 @@ namespace MongoCola
                         break;
                     case ConstMgr.SystemCollectionListTag:
                         RuntimeMongoDbContext.SelectObjectTag = e.Node.Tag.ToString();
-                        statusStripMain.Items[0].Text = "System Collection List ";
+                        statusStripMain.Items[0].Text = GuiConfig.GetText("System Collection List ", "SystemCollectionList");
                         break;
                     case ConstMgr.CollectionListTag:
+                        //添加数据集
+                        CollectionListHandler(e);
                         RuntimeMongoDbContext.SelectObjectTag = e.Node.Tag.ToString();
-                        statusStripMain.Items[0].Text = "Collection List ";
+                        statusStripMain.Items[0].Text = GuiConfig.GetText("Collection List ", "CollectionList");
+                        break;
+                    case ConstMgr.ViewListTag:
+                        ViewListHandler(e);
+                        RuntimeMongoDbContext.SelectObjectTag = e.Node.Tag.ToString();
+                        statusStripMain.Items[0].Text = GuiConfig.GetText("List View ", "ViewList");
                         break;
                     case ConstMgr.CollectionTag:
                         CollectionHandler(e);
                         break;
+                    case ConstMgr.ViewTag:
+                        ViewHandler(e);
+                        break;
                     case ConstMgr.IndexTag:
-                        statusStripMain.Items[0].Text = GuiConfig.GetText("Selected Index:", TextType.SelectedIndex) +
+                        statusStripMain.Items[0].Text = GuiConfig.GetText("Selected Index:", "SelectedIndex") +
                                                         ":" + RuntimeMongoDbContext.SelectTagData;
                         break;
                     case ConstMgr.IndexesTag:
                         statusStripMain.Items[0].Text =
-                            GuiConfig.GetText("Selected Index:", TextType.SelectedIndexes) + ":" +
+                            GuiConfig.GetText("Selected Index", "SelectedIndexes") + ":" +
                             RuntimeMongoDbContext.SelectTagData;
                         break;
                     case ConstMgr.UserListTag:
                         statusStripMain.Items[0].Text =
-                            GuiConfig.GetText("Selected UserList:", TextType.SelectedUserList) + ":" +
+                            GuiConfig.GetText("Selected UserList", "SelectedUserList") + ":" +
                             RuntimeMongoDbContext.SelectTagData;
                         ViewDataToolStripMenuItem.Enabled = true;
                         if (e.Button == MouseButtons.Right)
@@ -257,10 +348,14 @@ namespace MongoCola
                             contextMenuStripMain.Show(trvsrvlst.PointToScreen(e.Location));
                         }
                         break;
+                    case ConstMgr.RoleListTag:
+                        statusStripMain.Items[0].Text =
+                            GuiConfig.GetText("Selected RoleList", "Selected_RoleList") + ":" + RuntimeMongoDbContext.SelectTagData;
+                        break;
                     case ConstMgr.GridFileSystemTag:
                         //GridFileSystem
                         RuntimeMongoDbContext.SelectObjectTag = e.Node.Tag.ToString();
-                        statusStripMain.Items[0].Text = GuiConfig.GetText("Selected GFS", TextType.SelectedGfs) + ":" +
+                        statusStripMain.Items[0].Text = GuiConfig.GetText("Selected GFS", "SelectedGfs") + ":" +
                                                         RuntimeMongoDbContext.SelectTagData;
                         ViewDataToolStripMenuItem.Enabled = true;
                         if (e.Button == MouseButtons.Right)
@@ -303,10 +398,10 @@ namespace MongoCola
                             e.Node.ContextMenuStrip = contextMenuStripMain;
                             contextMenuStripMain.Show(trvsrvlst.PointToScreen(e.Location));
                         }
-                        statusStripMain.Items[0].Text = "Selected collection Javascript";
+                        statusStripMain.Items[0].Text = GuiConfig.GetText("Selected collection Javascript ", "JavascriptCollection");
                         break;
                     case ConstMgr.JavascriptDocTag:
-                        statusStripMain.Items[0].Text = "Selected JavaScript:" + RuntimeMongoDbContext.SelectTagData;
+                        statusStripMain.Items[0].Text = GuiConfig.GetText("Selected JavaScript", "Selected_Javascript") + ":" + RuntimeMongoDbContext.SelectTagData;
                         ViewDataToolStripMenuItem.Enabled = true;
                         dropJavascriptToolStripMenuItem.Enabled = true;
 
@@ -344,65 +439,6 @@ namespace MongoCola
             SetToolBarEnabled();
         }
 
-        /// <summary>
-        ///     设置图标
-        /// </summary>
-        private void SetMenuImage()
-        {
-            ExitToolStripMenuItem.Image = Resources.exit.ToBitmap();
-            ExpandAllConnectionToolStripMenuItem.Image = GetResource.GetImage(ImageType.Expand);
-            CollapseAllConnectionToolStripMenuItem.Image = GetResource.GetImage(ImageType.Collpse);
-            DelMongoCollectionToolStripMenuItem.Image = GetResource.GetIcon(IconType.No).ToBitmap();
-            DelMongoDBToolStripMenuItem.Image = GetResource.GetIcon(IconType.No).ToBitmap();
-
-            RefreshToolStripMenuItem.Image = GetResource.GetImage(ImageType.Refresh);
-            OptionsToolStripMenuItem.Image = GetResource.GetImage(ImageType.Option);
-
-            ThanksToolStripMenuItem.Image = GetResource.GetImage(ImageType.Smile);
-            UserGuideToolStripMenuItem.Image = GetResource.GetIcon(IconType.UserGuide).ToBitmap();
-        }
-
-        /// <summary>
-        ///     初始化Toolbar
-        /// </summary>
-        private void InitToolBar()
-        {
-            ExpandAllConnectionToolStripButton = ExpandAllConnectionToolStripMenuItem.CloneFromMenuItem();
-            CollapseAllConnectionToolStripButton = CollapseAllConnectionToolStripMenuItem.CloneFromMenuItem();
-            RefreshToolStripButton = RefreshToolStripMenuItem.CloneFromMenuItem();
-            ExitToolStripButton = ExitToolStripMenuItem.CloneFromMenuItem();
-            OptionToolStripButton = OptionsToolStripMenuItem.CloneFromMenuItem();
-            UserGuideToolStripButton = UserGuideToolStripMenuItem.CloneFromMenuItem();
-
-            if (SystemManager.MonoMode)
-            {
-                ExpandAllConnectionToolStripButton.Click += ExpandAllToolStripMenuItem_Click;
-                CollapseAllConnectionToolStripButton.Click += CollapseAllToolStripMenuItem_Click;
-                RefreshToolStripButton.Click += RefreshToolStripMenuItem_Click;
-                ExitToolStripButton.Click += ExitToolStripMenuItem_Click;
-                OptionToolStripButton.Click += OptionToolStripMenuItem_Click;
-                UserGuideToolStripButton.Click += userGuideToolStripMenuItem_Click;
-            }
-            //Main ToolTip
-            toolStripMain.Items.Add(ExpandAllConnectionToolStripButton);
-            toolStripMain.Items.Add(CollapseAllConnectionToolStripButton);
-            toolStripMain.Items.Add(RefreshToolStripButton);
-            toolStripMain.Items.Add(ExitToolStripButton);
-            toolStripMain.Items.Add(new ToolStripSeparator());
-            toolStripMain.Items.Add(OptionToolStripButton);
-            toolStripMain.Items.Add(UserGuideToolStripButton);
-        }
-
-        /// <summary>
-        ///     设定工具栏
-        /// </summary>
-        private void SetToolBarEnabled()
-        {
-            UserGuideToolStripButton.Enabled = true;
-            RefreshToolStripButton.Enabled = true;
-            OptionToolStripButton.Enabled = true;
-        }
-
         #endregion
 
         #region"View Manager"
@@ -438,23 +474,23 @@ namespace MongoCola
                         break;
                     case ConstMgr.JavascriptTag:
                         MongoHelper.InitJavascript();
-                        //ViewJavascriptName();
                         break;
                     case ConstMgr.JavascriptDocTag:
                         ViewJavascript();
                         break;
                     case ConstMgr.CollectionTag:
                     case ConstMgr.DocumentTag:
+                    case ConstMgr.ViewTag:
+                    case ConstMgr.RoleListTag:
                         ViewDataRecord();
                         break;
                     default:
                         break;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                trvsrvlst.Nodes.Clear();
-                trvsrvlst.Nodes.Add("丢失与数据库的连接！");
+                Utility.ExceptionDeal(ex);
             }
         }
 
@@ -464,14 +500,14 @@ namespace MongoCola
         private void ViewJavascript()
         {
             var tagArray = RuntimeMongoDbContext.SelectTagData.Split("/".ToCharArray());
-            var jsName = tagArray[(int) EnumMgr.PathLevel.Document];
+            var jsName = tagArray[(int)EnumMgr.PathLevel.Document];
             if (MultiTabManger.IsExist(RuntimeMongoDbContext.SelectTagData))
             {
                 MultiTabManger.SelectTab(RuntimeMongoDbContext.SelectTagData);
                 return;
             }
 
-            var jsEditor = new CtlJsEditor {StrDBtag = RuntimeMongoDbContext.SelectObjectTag};
+            var jsEditor = new CtlJsEditor { StrDBtag = RuntimeMongoDbContext.SelectObjectTag };
             var dataTab = new TabPage(jsName)
             {
                 Tag = RuntimeMongoDbContext.SelectObjectTag,
@@ -498,7 +534,6 @@ namespace MongoCola
                 JavaScriptStripMenuItem.DropDownItems.Remove(dataMenuItem);
             };
             tabView.SelectTab(dataTab);
-            //}
         }
 
         /// <summary>
@@ -517,30 +552,36 @@ namespace MongoCola
 
             var mDataViewInfo = new DataViewInfo
             {
-                StrDbTag = RuntimeMongoDbContext.SelectObjectTag,
-                IsUseFilter = false,
+                strCollectionPath = RuntimeMongoDbContext.SelectObjectTag,
                 IsReadOnly = RuntimeMongoDbContext.CurrentMongoConnectionconfig.IsReadOnly,
-                MDataFilter = new DataFilter()
             };
 
             CtlDataView dataViewctl;
             switch (RuntimeMongoDbContext.SelectTagType)
             {
                 case ConstMgr.GridFileSystemTag:
-                    dataViewctl = new CtlGfsView(mDataViewInfo);
+                    dataViewctl = new CtlGfsView(mDataViewInfo)
+                    {
+                        AllowDrop = true
+                    };
                     break;
                 case ConstMgr.UserListTag:
                     dataViewctl = new CtlUserView(mDataViewInfo);
+                    break;
+                case ConstMgr.ViewTag:
+                    mDataViewInfo.IsView = true;
+                    dataViewctl = new CtlDocumentView(mDataViewInfo);
                     break;
                 default:
                     dataViewctl = new CtlDocumentView(mDataViewInfo);
                     break;
             }
 
-            dataViewctl.MDataViewInfo = mDataViewInfo;
+            dataViewctl.mDataViewInfo = mDataViewInfo;
             dataViewctl.SelectObjectTag = RuntimeMongoDbContext.SelectObjectTag;
             dataViewctl.ParentMenu = CollectionToolStripMenuItem;
-            MultiTabManger.AddView(dataViewctl, RuntimeMongoDbContext.GetCurrentCollectionName());
+            var TabTitle = UiHelper.GetShowName(RuntimeMongoDbContext.GetCurrentDataBaseName(),RuntimeMongoDbContext.GetCurrentCollectionName());
+            MultiTabManger.AddView(dataViewctl, TabTitle, RuntimeMongoDbContext.SelectTagType);
         }
 
         /// <summary>
@@ -552,46 +593,6 @@ namespace MongoCola
         {
             MultiTabManger.RefreshSelectTab();
         }
-
-        #endregion
-
-        #region 临时添加treeview数据（js）
-
-        //private delegate void EventsHandlerAddJsName();
-
-        ///// <summary>
-        ///// 显示js数据
-        ///// </summary>
-        //private void ViewJavascriptName()
-        //{
-        //    if (trvsrvlst.InvokeRequired)
-        //    {
-        //        trvsrvlst.Invoke(new EventsHandlerAddJsName(ViewJavascriptName));
-        //    }
-        //    else
-        //    {
-        //        var node = trvsrvlst.SelectedNode;
-        //        if (node != null && node.Text == @"JavaScript")
-        //        {
-        //            node.Nodes.Clear();
-        //            var list = MongoHelper.GetJsNameList();
-        //            foreach (var name in list)
-        //            {
-        //                var jsNode = new TreeNode(name)
-        //                {
-        //                    ImageIndex = (int)GetSystemIcon.MainTreeImageType.JsDoc,
-        //                    SelectedImageIndex = (int)GetSystemIcon.MainTreeImageType.JsDoc
-        //                };
-        //                var jsTag = RuntimeMongoDbContext.SelectTagData;
-        //                jsNode.Tag = ConstMgr.JavascriptDocTag + ":" + jsTag + "/" + name;
-        //                node.Nodes.Add(jsNode);
-        //                RuntimeMongoDbContext.SelectObjectTag = jsNode.Tag.ToString();
-        //            }
-        //            trvsrvlst.Refresh();
-        //        }
-        //    }
-        //}
-
         #endregion
 
 

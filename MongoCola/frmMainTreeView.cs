@@ -1,24 +1,15 @@
-﻿/*
- * Created by SharpDevelop.
- * User: scs
- * Date: 2015/1/9
- * Time: 14:14
- * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
- */
-
-using System.Windows.Forms;
-using MongoUtility.Basic;
+﻿using MongoUtility.Basic;
 using MongoUtility.Command;
 using MongoUtility.Core;
 using MongoUtility.Security;
-using PlugInPackage;
+using PlugInPrj;
 using ResourceLib.Method;
 using ResourceLib.UI;
+using System.Windows.Forms;
 
 namespace MongoCola
 {
-    public partial class FrmMain : Form
+    public partial class frmMain : Form
     {
         /// <summary>
         ///     连接
@@ -28,20 +19,11 @@ namespace MongoCola
         private void ConnectionHandler(string strNodeType, TreeNodeMouseClickEventArgs e)
         {
             //普通连接
-            if (GuiConfig.IsUseDefaultLanguage)
-            {
-                statusStripMain.Items[0].Text = "Selected Connection:" + RuntimeMongoDbContext.SelectTagData;
-            }
-            else
-            {
-                statusStripMain.Items[0].Text =
-                    GuiConfig.GetText(TextType.SelectedServer) + ":" +
-                    RuntimeMongoDbContext.SelectTagData;
-            }
+            statusStripMain.Items[0].Text =
+                GuiConfig.GetText("Selected Connection", "SelectedServer") + ":" +
+                RuntimeMongoDbContext.SelectTagData;
 
             DisconnectToolStripMenuItem.Enabled = true;
-            //ShutDownToolStripMenuItem.Enabled = true;
-            //ShutDownToolStripButton.Enabled = true;
 
             switch (strNodeType)
             {
@@ -76,14 +58,10 @@ namespace MongoCola
                     shardingConfig.Click += ShardingConfigToolStripMenuItem_Click;
                     contextMenuStripMain.Items.Add(shardingConfig);
 
-                    //var t5 = ShutDownToolStripMenuItem.Clone();
-                    //t5.Click += ShutDownToolStripMenuItem_Click;
-                    //contextMenuStripMain.Items.Add(t5);
                 }
                 else
                 {
                     contextMenuStripMain.Items.Add(DisconnectToolStripMenuItem.Clone());
-                    //contextMenuStripMain.Items.Add(ShutDownToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(InitReplsetToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(ReplicaSetToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(ShardingConfigToolStripMenuItem.Clone());
@@ -129,33 +107,18 @@ namespace MongoCola
         private void ServerHandler(TreeNodeMouseClickEventArgs e)
         {
             RuntimeMongoDbContext.SelectObjectTag = e.Node.Tag.ToString();
-            if (GuiConfig.IsUseDefaultLanguage)
-            {
-                statusStripMain.Items[0].Text = "Selected Server:" + RuntimeMongoDbContext.SelectTagData;
-            }
-            else
-            {
-                statusStripMain.Items[0].Text =
-                    GuiConfig.GetText(TextType.SelectedServer) + ":" +
-                    RuntimeMongoDbContext.SelectTagData;
-            }
+            statusStripMain.Items[0].Text =
+                GuiConfig.GetText("Selected Server", "SelectedServer") + ":" +
+                RuntimeMongoDbContext.SelectTagData;
             //解禁 创建数据库,关闭服务器
             if (!RuntimeMongoDbContext.CurrentMongoConnectionconfig.IsReadOnly)
             {
                 CreateMongoDBToolStripMenuItem.Enabled = true;
                 AddUserToAdminToolStripMenuItem.Enabled = true;
-                if (RuntimeMongoDbContext.CurrentMongoConnectionconfig.ServerRole ==
-                    MongoConnectionConfig.SvrRoleType.MasterSvr ||
-                    RuntimeMongoDbContext.CurrentMongoConnectionconfig.ServerRole ==
-                    MongoConnectionConfig.SvrRoleType.SlaveSvr)
-                {
-                    //Master，Slave都可以执行
-                    slaveResyncToolStripMenuItem.Enabled = true;
-                }
+                AddAdminCustomeRoleStripMenuItem.Enabled = true;
             }
-            UserInfoStripMenuItem.Enabled = true;
             ServerStatusToolStripMenuItem.Enabled = true;
-            ServePropertyToolStripMenuItem.Enabled = true;
+            ServerMonitorToolStripMenuItem.Enabled = true;
 
             if (e.Button == MouseButtons.Right)
             {
@@ -175,14 +138,6 @@ namespace MongoCola
                     restoreMongo.Click += RestoreMongoToolStripMenuItem_Click;
                     contextMenuStripMain.Items.Add(restoreMongo);
 
-                    var slaveResync = slaveResyncToolStripMenuItem.Clone();
-                    slaveResync.Click += slaveResyncToolStripMenuItem_Click;
-                    contextMenuStripMain.Items.Add(slaveResync);
-
-                    var serveProperty = ServePropertyToolStripMenuItem.Clone();
-                    serveProperty.Click += ServePropertyToolStripMenuItem_Click;
-                    contextMenuStripMain.Items.Add(serveProperty);
-
                     var serverStatus = ServerStatusToolStripMenuItem.Clone();
                     serverStatus.Click += SvrStatusToolStripMenuItem_Click;
                     contextMenuStripMain.Items.Add(serverStatus);
@@ -192,11 +147,10 @@ namespace MongoCola
                     contextMenuStripMain.Items.Add(CreateMongoDBToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(AddUserToAdminToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(AddAdminCustomeRoleStripMenuItem.Clone());
-                    contextMenuStripMain.Items.Add(UserInfoStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(RestoreMongoToolStripMenuItem.Clone());
-                    contextMenuStripMain.Items.Add(slaveResyncToolStripMenuItem.Clone());
-                    contextMenuStripMain.Items.Add(ServePropertyToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(ServerStatusToolStripMenuItem.Clone());
+                    contextMenuStripMain.Items.Add(ServerMonitorToolStripMenuItem.Clone());
+
                 }
                 e.Node.ContextMenuStrip = contextMenuStripMain;
                 contextMenuStripMain.Show(trvsrvlst.PointToScreen(e.Location));
@@ -252,58 +206,50 @@ namespace MongoCola
         private void DataBaseHandler(string strNodeType, TreeNodeMouseClickEventArgs e)
         {
             RuntimeMongoDbContext.SelectObjectTag = e.Node.Tag.ToString();
-            var roles = User.GetCurrentDbRoles(RuntimeMongoDbContext.CurrentMongoConnectionconfig.ConnectionName,
+            var roles = MongoUserEx.GetCurrentDbRoles(RuntimeMongoDbContext.CurrentMongoConnectionconfig.ConnectionName,
                 RuntimeMongoDbContext.GetCurrentDataBaseName());
-            if (GuiConfig.IsUseDefaultLanguage)
-            {
-                statusStripMain.Items[0].Text = "Selected DataBase:" + RuntimeMongoDbContext.SelectTagData;
-            }
-            else
-            {
-                statusStripMain.Items[0].Text =
-                    GuiConfig.GetText(TextType.SelectedDataBase) + ":" +
-                    RuntimeMongoDbContext.SelectTagData;
-            }
+            statusStripMain.Items[0].Text =
+                GuiConfig.GetText("Selected DataBase", "SelectedDataBase") + ":" +
+                RuntimeMongoDbContext.SelectTagData;
             //系统库不允许修改
             if (!Operater.IsSystemDataBase(RuntimeMongoDbContext.GetCurrentDataBaseName()))
             {
                 if (RuntimeMongoDbContext.CurrentMongoConnectionconfig.AuthMode)
                 {
                     //根据Roles确定删除数据库/创建数据集等的权限
-                    DelMongoDBToolStripMenuItem.Enabled = MongoDbAction.JudgeRightByBuildInRole(roles,
-                        MongoDbAction.ActionType.ServerAdministrationActionsDropDatabase);
-                    CreateMongoCollectionToolStripMenuItem.Enabled = MongoDbAction.JudgeRightByBuildInRole(roles,
-                        MongoDbAction.ActionType.DatabaseManagementActionsCreateCollection);
+                    DelMongoDBToolStripMenuItem.Enabled = MongoAction.JudgeRightByBuildInRole(roles,
+                        MongoAction.ActionType.ServerAdministrationActionsDropDatabase);
+                    CreateMongoCollectionToolStripMenuItem.Enabled = MongoAction.JudgeRightByBuildInRole(roles,
+                        MongoAction.ActionType.DatabaseManagementActionsCreateCollection);
                     CopyDatabasetoolStripMenuItem.Enabled = true;
-                    InitGFSToolStripMenuItem.Enabled = MongoDbAction.JudgeRightByBuildInRole(roles,
-                        MongoDbAction.ActionType.MiscInitGfs);
-                    AddUserToolStripMenuItem.Enabled = MongoDbAction.JudgeRightByBuildInRole(roles,
-                        MongoDbAction.ActionType.DatabaseManagementActionsCreateUser);
+                    InitGFSToolStripMenuItem.Enabled = MongoAction.JudgeRightByBuildInRole(roles,
+                        MongoAction.ActionType.MiscActionsInitGfs);
+                    AddUserToolStripMenuItem.Enabled = MongoAction.JudgeRightByBuildInRole(roles,
+                        MongoAction.ActionType.DatabaseManagementActionsCreateUser);
                     //If a Slave server can repair database @ Master-Slave is not sure ??
-                    RepairDBToolStripMenuItem.Enabled = MongoDbAction.JudgeRightByBuildInRole(roles,
-                        MongoDbAction.ActionType.ServerAdministrationActionsRepairDatabase);
+                    RepairDBToolStripMenuItem.Enabled = MongoAction.JudgeRightByBuildInRole(roles,
+                        MongoAction.ActionType.ServerAdministrationActionsRepairDatabase);
                 }
                 else
                 {
                     DelMongoDBToolStripMenuItem.Enabled = true;
                     CreateMongoCollectionToolStripMenuItem.Enabled = true;
+                    CreateViewtoolStripMenuItem.Enabled = true;
                     CopyDatabasetoolStripMenuItem.Enabled = true;
                     InitGFSToolStripMenuItem.Enabled = true;
                     AddUserToolStripMenuItem.Enabled = true;
                     RepairDBToolStripMenuItem.Enabled = true;
                 }
-                if (roles.Count == 0)
-                {
-                    EvalJSToolStripMenuItem.Enabled = true;
-                }
-                else
-                {
-                    EvalJSToolStripMenuItem.Enabled = MongoDbAction.JudgeRightByBuildInRole(roles,
-                        MongoDbAction.ActionType.MiscEvalJs);
-                }
             }
+
+            AddDBCustomeRoleStripMenuItem.Enabled = true;
+
+            //使用Shell:从实际情况来看，有一些Shell指令是不依赖与Admin数据库或者和数据库无关的
+            //所以这里暂时开放所有的Shell指令。
+            EvalJSToolStripMenuItem.Enabled = true;
             //备份数据库
             DumpDatabaseToolStripMenuItem.Enabled = true;
+            //Profilling
             ProfillingLevelToolStripMenuItem.Enabled = true;
             if (strNodeType == ConstMgr.SingleDatabaseTag)
             {
@@ -323,6 +269,10 @@ namespace MongoCola
                     var createMongoCollection = CreateMongoCollectionToolStripMenuItem.Clone();
                     createMongoCollection.Click += CreateMongoCollectionToolStripMenuItem_Click;
                     contextMenuStripMain.Items.Add(createMongoCollection);
+
+                    var createView = CreateViewtoolStripMenuItem.Clone();
+                    createView.Click += CreateViewtoolStripMenuItem_Click;
+                    contextMenuStripMain.Items.Add(createView);
 
                     var addUser = AddUserToolStripMenuItem.Clone();
                     addUser.Click += AddUserToolStripMenuItem_Click;
@@ -364,6 +314,7 @@ namespace MongoCola
                 {
                     contextMenuStripMain.Items.Add(DelMongoDBToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(CreateMongoCollectionToolStripMenuItem.Clone());
+                    contextMenuStripMain.Items.Add(CreateViewtoolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(CopyDatabasetoolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(AddUserToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(AddDBCustomeRoleStripMenuItem.Clone());
@@ -382,21 +333,92 @@ namespace MongoCola
         }
 
         /// <summary>
-        ///     Collections the handler.
+        ///     View Hanlder
+        /// </summary>
+        /// <param name="e"></param>
+        private void ViewHandler(TreeNodeMouseClickEventArgs e)
+        {
+            statusStripMain.Items[0].Text = GuiConfig.GetText("Selected View", "SelectedView") + ":" + e.Node.Text;
+            DelMongoCollectionToolStripMenuItem.Enabled = true;
+            if (e.Button == MouseButtons.Right)
+            {
+                contextMenuStripMain = new ContextMenuStrip();
+                contextMenuStripMain.Items.Add(DelMongoCollectionToolStripMenuItem.Clone());
+                var ViewInfoToolStripMenuItem = new ToolStripMenuItem("ViewInfo");
+                ViewInfoToolStripMenuItem.Click += ViewInfoToolStripMenuItem_Click;
+                contextMenuStripMain.Items.Add(ViewInfoToolStripMenuItem);
+                e.Node.ContextMenuStrip = contextMenuStripMain;
+                contextMenuStripMain.Show(trvsrvlst.PointToScreen(e.Location));
+            }
+        }
+
+        /// <summary>
+        ///     CollectionList右键事件
+        /// </summary>
+        /// <param name="e"></param>
+        private void CollectionListHandler(TreeNodeMouseClickEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                if (!Operater.IsSystemDataBase(RuntimeMongoDbContext.GetCurrentDataBaseName()))
+                {
+                    CreateMongoCollectionToolStripMenuItem.Enabled = true;
+                }
+                contextMenuStripMain = new ContextMenuStrip();
+                if (SystemManager.MonoMode)
+                {
+                    var createMongoCollection = CreateMongoCollectionToolStripMenuItem.Clone();
+                    createMongoCollection.Click += CreateMongoCollectionToolStripMenuItem_Click;
+                    contextMenuStripMain.Items.Add(createMongoCollection);
+                }
+                else
+                {
+                    contextMenuStripMain.Items.Add(CreateMongoCollectionToolStripMenuItem.Clone());
+                }
+                e.Node.ContextMenuStrip = contextMenuStripMain;
+                contextMenuStripMain.Show(trvsrvlst.PointToScreen(e.Location));
+            }
+        }
+
+        /// <summary>
+        /// ViewList右键事件
+        /// </summary>
+        /// <param name="e"></param>
+        private void ViewListHandler(TreeNodeMouseClickEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                if (!Operater.IsSystemDataBase(RuntimeMongoDbContext.GetCurrentDataBaseName()))
+                {
+                    CreateViewtoolStripMenuItem.Enabled = true;
+                }
+                contextMenuStripMain = new ContextMenuStrip();
+                if (SystemManager.MonoMode)
+                {
+                    var createMongoCollection = CreateViewtoolStripMenuItem.Clone();
+                    createMongoCollection.Click += CreateMongoCollectionToolStripMenuItem_Click;
+                    contextMenuStripMain.Items.Add(createMongoCollection);
+                }
+                else
+                {
+                    contextMenuStripMain.Items.Add(CreateViewtoolStripMenuItem.Clone());
+                }
+                e.Node.ContextMenuStrip = contextMenuStripMain;
+                contextMenuStripMain.Show(trvsrvlst.PointToScreen(e.Location));
+            }
+        }
+        /// <summary>
+        ///     Collection  Hanlder.
         /// </summary>
         /// <param name="e">E.</param>
         private void CollectionHandler(TreeNodeMouseClickEventArgs e)
         {
-            if (GuiConfig.IsUseDefaultLanguage)
-            {
-                statusStripMain.Items[0].Text = "Selected Collection:" + RuntimeMongoDbContext.SelectTagData;
-            }
-            else
-            {
-                statusStripMain.Items[0].Text =
-                    GuiConfig.GetText(TextType.SelectedCollection) + ":" +
-                    RuntimeMongoDbContext.SelectTagData;
-            }
+            statusStripMain.Items[0].Text =
+                GuiConfig.GetText("Selected Collection", "SelectedCollection") + ":" +
+                RuntimeMongoDbContext.SelectTagData;
+
+            var mongoCol = RuntimeMongoDbContext.GetCurrentCollection();
+
             //解禁 删除数据集
             if (!Operater.IsSystemCollection())
             {
@@ -424,8 +446,13 @@ namespace MongoCola
             ViewDataToolStripMenuItem.Enabled = true;
             CollectionStatusToolStripMenuItem.Enabled = true;
             ValidateToolStripMenuItem.Enabled = true;
-            machineLearningToolStripMenuItem.Enabled = true;
             ExportToFileToolStripMenuItem.Enabled = true;
+
+            if (!mongoCol.IsCapped())
+            {
+                ConvertToCappedtoolStripMenuItem.Enabled = true;
+            }
+
             if (e.Button == MouseButtons.Right)
             {
                 contextMenuStripMain = new ContextMenuStrip();
@@ -468,18 +495,9 @@ namespace MongoCola
 
                     var aggregationMenu = AggregationToolStripMenuItem.Clone();
 
-                    var count = countToolStripMenuItem.Clone();
-                    count.Click += countToolStripMenuItem_Click;
-                    aggregationMenu.DropDownItems.Add(count);
-
                     var distinct = distinctToolStripMenuItem.Clone();
                     distinct.Click += distinctToolStripMenuItem_Click;
                     aggregationMenu.DropDownItems.Add(distinct);
-
-
-                    var group = groupToolStripMenuItem.Clone();
-                    group.Click += groupToolStripMenuItem_Click;
-                    aggregationMenu.DropDownItems.Add(group);
 
                     var mapReduce = mapReduceToolStripMenuItem.Clone();
                     mapReduce.Click += mapReduceToolStripMenuItem_Click;
@@ -506,6 +524,7 @@ namespace MongoCola
                 {
                     contextMenuStripMain.Items.Add(DelMongoCollectionToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(RenameCollectionToolStripMenuItem.Clone());
+                    contextMenuStripMain.Items.Add(ConvertToCappedtoolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(DumpCollectionToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(RestoreMongoToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(ImportCollectionToolStripMenuItem.Clone());
@@ -521,7 +540,6 @@ namespace MongoCola
                     contextMenuStripMain.Items.Add(new ToolStripSeparator());
                     contextMenuStripMain.Items.Add(CollectionStatusToolStripMenuItem.Clone());
                     contextMenuStripMain.Items.Add(ValidateToolStripMenuItem.Clone());
-                    contextMenuStripMain.Items.Add(machineLearningToolStripMenuItem.Clone());
                 }
                 e.Node.ContextMenuStrip = contextMenuStripMain;
                 contextMenuStripMain.Show(trvsrvlst.PointToScreen(e.Location));

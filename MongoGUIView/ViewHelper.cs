@@ -38,27 +38,27 @@ namespace MongoGUIView
         public static void FillDataToControl(List<BsonDocument> dataList, List<Control> controls,
             DataViewInfo currentDataViewInfo)
         {
-            var collectionPath = currentDataViewInfo.StrDbTag.Split(":".ToCharArray())[1];
+            var collectionPath = currentDataViewInfo.strCollectionPath.Split(":".ToCharArray())[1];
             var cp = collectionPath.Split("/".ToCharArray());
             foreach (var control in controls)
             {
-                if (control.GetType() == typeof (ListView))
+                if (control.GetType() == typeof(ListView))
                 {
                     if (
                         !(dataList.Count == 0 &&
-                          currentDataViewInfo.StrDbTag.Split(":".ToCharArray())[0] == ConstMgr.CollectionTag))
+                          currentDataViewInfo.strCollectionPath.Split(":".ToCharArray())[0] == ConstMgr.CollectionTag))
                     {
                         //只有在纯数据集的时候才退出，不然的话，至少需要将字段结构在ListView中显示出来。
-                        FillDataToListView(cp[(int) EnumMgr.PathLevel.Collection], (ListView) control, dataList);
+                        FillDataToListView(cp[(int)EnumMgr.PathLevel.CollectionAndView], (ListView)control, dataList);
                     }
                 }
-                if (control.GetType() == typeof (TextBox))
+                if (control.GetType() == typeof(TextBox))
                 {
-                    FillJsonDataToTextBox((TextBox) control, dataList, currentDataViewInfo.SkipCnt);
+                    FillJsonDataToTextBox((TextBox)control, dataList, currentDataViewInfo.SkipCnt);
                 }
-                if (control.GetType() == typeof (CtlTreeViewColumns))
+                if (control.GetType() == typeof(CtlTreeViewColumns))
                 {
-                    UiHelper.FillDataToTreeView(cp[(int) EnumMgr.PathLevel.Collection], (CtlTreeViewColumns) control,
+                    UiHelper.FillDataToTreeView(cp[(int)EnumMgr.PathLevel.CollectionAndView], (CtlTreeViewColumns)control,
                         dataList,
                         currentDataViewInfo.SkipCnt);
                 }
@@ -158,7 +158,7 @@ namespace MongoGUIView
                 case ConstMgr.CollectionNameGfsFiles:
                     SetGridFileToListView(dataList, lstData);
                     break;
-                case ConstMgr.CollectionNameUser:
+                case ConstMgr.CollectionNameUsers:
                     SetUserListToListView(dataList, lstData);
                     break;
                 default:
@@ -198,18 +198,17 @@ namespace MongoGUIView
                 //Key:_id
                 if (!isSystem)
                 {
-                    BsonElement id;
-                    docItem.TryGetElement(ConstMgr.KeyId, out id);
-                    if (!(id.Value is BsonNull))
+                    docItem.TryGetElement(ConstMgr.KeyId, out BsonElement id);
+                    if ((id.Value is BsonNull) || (id.Value == null))
+                    {
+                        lstItem.Text = "[Empty]";
+                        lstItem.Tag = docItem.GetElement(0).Value;
+                    }
+                    else
                     {
                         lstItem.Text = docItem.GetValue(ConstMgr.KeyId).ToString();
                         //这里保存真实的主Key数据，删除的时候使用
                         lstItem.Tag = docItem.GetValue(ConstMgr.KeyId);
-                    }
-                    else
-                    {
-                        lstItem.Text = "[Empty]";
-                        lstItem.Tag = docItem.GetElement(0).Value;
                     }
                 }
                 else
@@ -223,13 +222,12 @@ namespace MongoGUIView
                     {
                         continue;
                     }
-                    BsonValue val;
-                    docItem.TryGetValue(columnlist[i], out val);
+                    docItem.TryGetValue(columnlist[i], out BsonValue val);
                     lstItem.SubItems.Add(val == null ? "" : ConvertToString(val));
                 }
                 lstData.Items.Add(lstItem);
             }
-            Utility.ListViewColumnResize(lstData);
+            UIAssistant.ListViewColumnResize(lstData);
         }
 
         /// <summary>
@@ -246,59 +244,41 @@ namespace MongoGUIView
             if (!GuiConfig.IsUseDefaultLanguage)
             {
                 lstData.Columns.Add("ID");
-                lstData.Columns.Add(
-                    GuiConfig.GetText(TextType.CommonUsername));
-                lstData.Columns.Add(GuiConfig.GetText(TextType.CommonRoles));
-                lstData.Columns.Add(
-                    GuiConfig.GetText(TextType.CommonPassword));
-                lstData.Columns.Add("userSource");
-                lstData.Columns.Add("otherDBRoles");
-                lstData.Columns.Add(
-                    GuiConfig.GetText(TextType.CommonReadOnly));
+                lstData.Columns.Add(GuiConfig.GetText("Common.Username"));
+                lstData.Columns.Add(GuiConfig.GetText("Common.Roles"));
+                lstData.Columns.Add(GuiConfig.GetText("Common.Credentials"));
+                lstData.Columns.Add(GuiConfig.GetText("Common.CustomData"));
             }
             else
             {
                 lstData.Columns.Add("ID");
                 lstData.Columns.Add("user");
                 lstData.Columns.Add("roles");
-                lstData.Columns.Add("password");
-                lstData.Columns.Add("userSource");
-                lstData.Columns.Add("otherDBRoles");
-                lstData.Columns.Add("readonly");
+                lstData.Columns.Add("credentials");
+                lstData.Columns.Add("customData");
             }
             foreach (var docFile in dataList)
             {
-                var lstItem = new ListViewItem();
-                //ID
-                lstItem.Text = docFile.GetValue(ConstMgr.KeyId).ToString();
+                var lstItem = new ListViewItem()
+                {
+                    //ID
+                    Text = docFile.GetValue(ConstMgr.KeyId).ToString()
+                };
                 //User
                 lstItem.SubItems.Add(docFile.GetValue("user").ToString());
                 //roles
-                BsonValue strRoles;
-                docFile.TryGetValue("roles", out strRoles);
+                docFile.TryGetValue("roles", out BsonValue strRoles);
                 lstItem.SubItems.Add(strRoles == null ? "N/A" : strRoles.ToString());
                 //密码是Hash表示的，这里没有安全隐患
                 //Password和userSource不能同时设置，所以password也可能不存在
-                BsonValue strPassword;
-                docFile.TryGetValue("pwd", out strPassword);
-                lstItem.SubItems.Add(strPassword == null ? "N/A" : strPassword.ToString());
-                //userSource
-                BsonValue strUserSource;
-                docFile.TryGetValue("userSource", out strUserSource);
-                lstItem.SubItems.Add(strUserSource == null ? "N/A" : strUserSource.ToString());
-                //OtherDBRoles
-                BsonValue strOtherDbRoles;
-                docFile.TryGetValue("otherDBRoles", out strOtherDbRoles);
-                lstItem.SubItems.Add(strOtherDbRoles == null ? "N/A" : strOtherDbRoles.ToString());
-                //ReadOnly
-                //20130802 roles列表示。ReadOnly可能不存在！
-                BsonValue strReadOnly;
-                docFile.TryGetValue("readOnly", out strReadOnly);
-                lstItem.SubItems.Add(strReadOnly == null ? "N/A" : strReadOnly.ToString());
+                docFile.TryGetValue("credentials", out BsonValue credentials);
+                lstItem.SubItems.Add(credentials == null ? "N/A" : credentials.ToString());
+                //customData
+                docFile.TryGetValue("customData", out BsonValue customData);
+                lstItem.SubItems.Add(customData == null ? "N/A" : customData.ToString());
                 lstData.Items.Add(lstItem);
             }
-            Utility.ListViewColumnResize(lstData);
-            //lstData.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+            UIAssistant.ListViewColumnResize(lstData);
         }
 
         /// <summary>
@@ -309,28 +289,12 @@ namespace MongoGUIView
         private static void SetGridFileToListView(List<BsonDocument> dataList, ListView lstData)
         {
             lstData.Clear();
-            if (!GuiConfig.IsUseDefaultLanguage)
-            {
-                lstData.Columns.Add(GuiConfig.GetText(TextType.GfsFilename));
-                lstData.Columns.Add(GuiConfig.GetText(TextType.GfsLength));
-                lstData.Columns.Add(
-                    GuiConfig.GetText(TextType.GfsChunkSize));
-                lstData.Columns.Add(
-                    GuiConfig.GetText(TextType.GfsUploadDate));
-                lstData.Columns.Add(GuiConfig.GetText(TextType.GfsMd5));
-                //!MONO
-                lstData.Columns.Add("ContentType");
-            }
-            else
-            {
-                lstData.Columns.Add("filename");
-                lstData.Columns.Add("length");
-                lstData.Columns.Add("chunkSize");
-                lstData.Columns.Add("uploadDate");
-                lstData.Columns.Add("MD5");
-                //!MONO
-                lstData.Columns.Add("ContentType");
-            }
+            lstData.Columns.Add(GuiConfig.GetText("filename", "GFS.Filename"));
+            lstData.Columns.Add(GuiConfig.GetText("length", "GFS.length"));
+            lstData.Columns.Add(GuiConfig.GetText("chunkSize", "GFS.chunkSize"));
+            lstData.Columns.Add(GuiConfig.GetText("uploadDate", "GFS.uploadDate"));
+            lstData.Columns.Add("MD5");
+            lstData.Columns.Add(GuiConfig.GetText("ContentType","GFS.ContentType"));
             lstData.SmallImageList = GetSystemIcon.IconImagelist;
             lstData.LargeImageList = GetSystemIcon.IconImagelist;
             lstData.TileSize = new Size(200, 100);
@@ -338,10 +302,12 @@ namespace MongoGUIView
             foreach (var docFile in dataList)
             {
                 var filename = docFile.GetValue("filename").ToString();
-                var lstItem = new ListViewItem();
-                lstItem.ImageIndex = GetSystemIcon.GetIconIndexByFileName(filename, false);
-                lstItem.Text = filename;
-                lstItem.ToolTipText = filename;
+                var lstItem = new ListViewItem()
+                {
+                    ImageIndex = GetSystemIcon.GetIconIndexByFileName(filename, false),
+                    Text = filename,
+                    ToolTipText = filename
+                };
                 lstItem.SubItems.Add(MongoHelper.GetBsonSize(docFile.GetValue("length")));
                 lstItem.SubItems.Add(MongoHelper.GetBsonSize(docFile.GetValue("chunkSize")));
                 lstItem.SubItems.Add(ConvertToString(docFile.GetValue("uploadDate")));
@@ -351,7 +317,7 @@ namespace MongoGUIView
                 lstData.Items.Add(lstItem);
             }
             //自动调节列宽
-            Utility.ListViewColumnResize(lstData);
+            UIAssistant.ListViewColumnResize(lstData);
             // 用新的排序方法对ListView排序
             var lvwGfsColumnSorter = new LvwColumnSorter();
             lstData.ListViewItemSorter = lvwGfsColumnSorter;
@@ -430,7 +396,7 @@ namespace MongoGUIView
                     mDataViewInfo.SkipCnt = 0;
                     break;
                 case PageChangeOpr.LastPage:
-                    if (mDataViewInfo.CurrentCollectionTotalCnt%mDataViewInfo.LimitCnt == 0)
+                    if (mDataViewInfo.CurrentCollectionTotalCnt % mDataViewInfo.LimitCnt == 0)
                     {
                         //没有余数的时候，600 % 100 == 0  => Skip = 600-100 = 500
                         mDataViewInfo.SkipCnt = mDataViewInfo.CurrentCollectionTotalCnt - mDataViewInfo.LimitCnt;
@@ -439,7 +405,7 @@ namespace MongoGUIView
                     {
                         // 630 % 100 == 30  => Skip = 630-30 = 600  
                         mDataViewInfo.SkipCnt = mDataViewInfo.CurrentCollectionTotalCnt -
-                                                mDataViewInfo.CurrentCollectionTotalCnt%mDataViewInfo.LimitCnt;
+                                                mDataViewInfo.CurrentCollectionTotalCnt % mDataViewInfo.LimitCnt;
                     }
                     break;
                 case PageChangeOpr.NextPage:

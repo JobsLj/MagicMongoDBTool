@@ -28,6 +28,35 @@ namespace MongoCola.Config
             {
                 radLocal.Checked = true;
             }
+
+            switch (SystemManager.SystemConfig.DateTimeFormat)
+            {
+                case DateTimePickerFormat.Long:
+                    radDateTime_Long.Checked = true;
+                    break;
+                case DateTimePickerFormat.Short:
+                    radDateTime_Short.Checked = true;
+                    break;
+                case DateTimePickerFormat.Time:
+                    radDateTime_Time.Checked = true;
+                    break;
+                case DateTimePickerFormat.Custom:
+                    radDateTime_Custom.Checked = true;
+                    txtDateTimeFormat.Text = SystemManager.SystemConfig.DateTimeCustomFormat;
+                    break;
+                default:
+                    break;
+            }
+
+            if (SystemManager.SystemConfig.jsonMode == MongoDB.Bson.IO.JsonOutputMode.Strict)
+            {
+                radJsonStrict.Checked = true;
+            }
+            else
+            {
+                radJsonShell.Checked = true;
+            }
+
             if (SystemManager.SystemConfig.IsDisplayNumberWithKSystem)
             {
                 chkIsDisplayNumberWithKSystem.Checked = true;
@@ -38,7 +67,7 @@ namespace MongoCola.Config
             }
             if (SystemManager.SystemConfig.RefreshStatusTimer == 0)
             {
-                SystemManager.SystemConfig.RefreshStatusTimer = SystemManager.SystemConfig.DefaultRefreshStatusTimer;
+                SystemManager.SystemConfig.RefreshStatusTimer = SystemConfig.DefaultRefreshStatusTimer;
             }
             intRefreshStatusTimer.Value = SystemManager.SystemConfig.RefreshStatusTimer;
             if (string.IsNullOrEmpty(SystemManager.SystemConfig.UiFontFamily))
@@ -78,6 +107,11 @@ namespace MongoCola.Config
             {
                 cmbLanguage.Text = StringResource.LanguageEnglish;
             }
+
+            //GuidRepresentation
+            Common.UIAssistant.FillComberWithEnum(cmbGuidRepresentation, typeof(SystemConfig.GuidRepresentation), true);
+            cmbGuidRepresentation.SelectedIndex = SystemManager.SystemConfig.BsonGuidRepresentation.GetHashCode();
+
             GuiConfig.Translateform(this);
             GuiConfig.MonoCompactControl(Controls);
         }
@@ -89,9 +123,9 @@ namespace MongoCola.Config
         /// <param name="e"></param>
         private void btnFont_Click(object sender, EventArgs e)
         {
-            if (fontDialog1.ShowDialog() == DialogResult.OK)
+            if (fontDialog.ShowDialog() == DialogResult.OK)
             {
-                SystemManager.SystemConfig.UiFontFamily = fontDialog1.Font.FontFamily.Name;
+                SystemManager.SystemConfig.UiFontFamily = fontDialog.Font.FontFamily.Name;
                 lblCurrentFont.Text = SystemManager.SystemConfig.UiFontFamily;
             }
         }
@@ -105,10 +139,23 @@ namespace MongoCola.Config
         {
             _ctlReadWriteConfig1.SaveConfig();
             SystemManager.SystemConfig.IsUtc = radUTC.Checked;
+            if (radDateTime_Custom.Checked)
+            {
+                SystemManager.SystemConfig.DateTimeFormat = DateTimePickerFormat.Custom;
+                SystemManager.SystemConfig.DateTimeCustomFormat = txtDateTimeFormat.Text;
+            }
+            if (radDateTime_Long.Checked) SystemManager.SystemConfig.DateTimeFormat = DateTimePickerFormat.Long;
+            if (radDateTime_Short.Checked) SystemManager.SystemConfig.DateTimeFormat = DateTimePickerFormat.Short;
+            if (radDateTime_Time.Checked) SystemManager.SystemConfig.DateTimeFormat = DateTimePickerFormat.Time;
+
+            if (radJsonShell.Checked) SystemManager.SystemConfig.jsonMode = MongoDB.Bson.IO.JsonOutputMode.Shell;
+            if (radJsonStrict.Checked) SystemManager.SystemConfig.jsonMode = MongoDB.Bson.IO.JsonOutputMode.Strict;
+
             SystemManager.SystemConfig.IsDisplayNumberWithKSystem = chkIsDisplayNumberWithKSystem.Checked;
             SystemManager.SystemConfig.MongoBinPath = fileMongoBinPath.SelectedPathOrFileName;
-            SystemManager.SystemConfig.RefreshStatusTimer = (int) intRefreshStatusTimer.Value;
+            SystemManager.SystemConfig.RefreshStatusTimer = (int)intRefreshStatusTimer.Value;
             SystemManager.SystemConfig.LanguageFileName = cmbLanguage.Text + ".xml";
+            SystemManager.SystemConfig.BsonGuidRepresentation = (SystemConfig.GuidRepresentation)cmbGuidRepresentation.SelectedIndex;
             SystemManager.SystemConfig.SaveSystemConfig();
             Close();
         }

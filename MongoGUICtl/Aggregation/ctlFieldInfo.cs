@@ -38,29 +38,11 @@ namespace MongoGUICtl.Aggregation
         /// </summary>
         private bool _mIdProtectMode;
 
-        private FieldMode _mMode;
 
         public CtlFieldInfo()
         {
             InitializeComponent();
-            if (!GuiConfig.IsUseDefaultLanguage)
-            {
-                lblFieldName.Text =
-                    GuiConfig.GetText(TextType.CtlIndexCreateIndex);
-                cmbSort.Items.Clear();
-                cmbSort.Items.Add(GuiConfig.GetText(TextType.IndexNoSort));
-                cmbSort.Items.Add(GuiConfig.GetText(TextType.IndexAsce));
-                cmbSort.Items.Add(GuiConfig.GetText(TextType.IndexDesc));
-                chkIsShow.Text =
-                    GuiConfig.GetText(TextType.CtlFieldInfoShow);
-            }
-            else
-            {
-                cmbSort.Items.Clear();
-                cmbSort.Items.Add("None Sort");
-                cmbSort.Items.Add("Asce");
-                cmbSort.Items.Add("Desc");
-            }
+            Common.UIAssistant.FillComberWithEnum(cmbSort, typeof(DataFilter.SortType));
         }
 
         /// <summary>
@@ -70,8 +52,7 @@ namespace MongoGUICtl.Aggregation
         {
             set
             {
-                _mMode = value;
-                switch (_mMode)
+                switch (value)
                 {
                     case FieldMode.Field:
                         chkIsShow.Visible = true;
@@ -103,7 +84,6 @@ namespace MongoGUICtl.Aggregation
                         break;
                 }
             }
-            get { return _mMode; }
         }
 
         /// <summary>
@@ -182,10 +162,12 @@ namespace MongoGUICtl.Aggregation
             }
             get
             {
-                var rtnQueryFieldItem = new DataFilter.QueryFieldItem();
-                rtnQueryFieldItem.IsShow = chkIsShow.Checked;
-                rtnQueryFieldItem.ColName = lblFieldName.Text;
-                rtnQueryFieldItem.ProjectName = txtProject.Text;
+                var rtnQueryFieldItem = new DataFilter.QueryFieldItem()
+                {
+                    IsShow = chkIsShow.Checked,
+                    ColName = lblFieldName.Text,
+                    ProjectName = txtProject.Text
+                };
                 if (cmbSort.SelectedIndex == 0)
                 {
                     rtnQueryFieldItem.SortType = DataFilter.SortType.NoSort;
@@ -198,9 +180,17 @@ namespace MongoGUICtl.Aggregation
                 {
                     rtnQueryFieldItem.SortType = DataFilter.SortType.Descending;
                 }
-                rtnQueryFieldItem.SortOrder = (int) NumIndexOrder.Value;
+                rtnQueryFieldItem.SortOrder = (int)NumIndexOrder.Value;
                 return rtnQueryFieldItem;
             }
+        }
+
+        private void CtlFieldInfo_Load(object sender, System.EventArgs e)
+        {
+            cmbSort.Items.Clear();
+            cmbSort.Items.Add(GuiConfig.GetText("None Sort", "Index.NoSort"));
+            cmbSort.Items.Add(GuiConfig.GetText("Asce", "Index.Asce"));
+            cmbSort.Items.Add(GuiConfig.GetText("Desc", "Index.Desc"));
         }
     }
 }

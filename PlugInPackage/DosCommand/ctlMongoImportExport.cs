@@ -22,28 +22,7 @@ namespace PlugInPackage.DosCommand
         {
             ctllogLvT.LoglvChanged += ctllogLvT_LoglvChanged;
             ctlFilePickerOutput.PathChanged += ctlFilePickerOutput_PathChanged;
-            if (!GuiConfig.IsUseDefaultLanguage)
-            {
-                lblCollectionName.Text =
-                    GuiConfig.GetText(
-                        TextType.CollectionStatusCollectionName);
-                lblDBName.Text =
-                    GuiConfig.GetText(TextType.AddConnectionDbName);
-                lblHost.Text = GuiConfig.GetText(TextType.CommonHost);
-                lblFieldList.Text =
-                    GuiConfig.GetText(
-                        TextType.DosCommandTabExInColumnList);
-                lblPort.Text = GuiConfig.GetText(TextType.CommonPort);
-                grpDirect.Text =
-                    GuiConfig.GetText(
-                        TextType.DosCommandTabExInOperation);
-                radImport.Text =
-                    GuiConfig.GetText(TextType.DosCommandTabExInImport);
-                radExport.Text =
-                    GuiConfig.GetText(TextType.DosCommandTabExInExport);
-                ctlFilePickerOutput.Title =
-                    GuiConfig.GetText(TextType.DosCommandTabExInWorkfile);
-            }
+            GuiConfig.Translateform(Controls);
         }
 
         protected virtual void OnCommandChange(TextChangeEventArgs e)

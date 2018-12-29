@@ -1,20 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Windows.Forms;
+﻿using MongoDB.Bson;
 using MongoUtility.Aggregation;
 using MongoUtility.Core;
 using MongoUtility.ToolKit;
 using ResourceLib.UI;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace MongoGUICtl.Aggregation
 {
     public partial class ConditionPanel : UserControl
     {
-        ///// <summary>
-        /////     条件输入器数量
-        ///// </summary>
-        //private byte _conditionCount;
 
         /// <summary>
         ///     条件输入器位置
@@ -32,10 +29,14 @@ namespace MongoGUICtl.Aggregation
         public ConditionPanel()
         {
             InitializeComponent();
+
+        }
+        private void ConditionPanel_Load(object sender, EventArgs e)
+        {
             if (RuntimeMongoDbContext.GetCurrentCollection() != null)
             {
-                ColumnList =
-                    MongoHelper.GetCollectionSchame(RuntimeMongoDbContext.GetCurrentCollection());
+                ColumnList = MongoHelper.GetCollectionSchame(RuntimeMongoDbContext.GetCurrentCollection());
+                AddCondition();
             }
         }
 
@@ -52,20 +53,35 @@ namespace MongoGUICtl.Aggregation
             newCondition.ItemAdded += sender => AddCondition();
             Controls.Add(newCondition);
         }
+        /// <summary>
+        ///     清除条件
+        /// </summary>
+        public void ClearCondition()
+        {
+            Controls.Clear();
+            _conditionPos = new Point(5, 0);
+            AddCondition();
+        }
 
         /// <summary>
-        ///     设置DataFilter
+        ///     获得Match文档
         /// </summary>
-        public void SetCurrDataFilter(DataViewInfo currentDataViewInfo)
+        /// <returns></returns>
+        public BsonDocument GetMatchDocument()
         {
-            //过滤条件
+            List<DataFilter.QueryConditionInputItem> QueryConditionList = new List<DataFilter.QueryConditionInputItem>();
             foreach (CtlQueryCondition ctl in Controls)
             {
                 if (ctl.IsSeted)
                 {
-                    currentDataViewInfo.MDataFilter.QueryConditionList.Add(ctl.ConditionItem);
+                    QueryConditionList.Add(ctl.ConditionItem);
                 }
             }
+            if (QueryConditionList.Count > 0)
+            {
+                return new BsonDocument("$match", QueryHelper.GetQuery(QueryConditionList).ToBsonDocument());
+            }
+            return null;
         }
 
         /// <summary>
@@ -123,16 +139,6 @@ namespace MongoGUICtl.Aggregation
             {
                 MyMessageBox.ShowMessage("Load Exception", "A Exception is happened when loading", strErrMsg, true);
             }
-        }
-
-        /// <summary>
-        ///     清除条件
-        /// </summary>
-        public void ClearCondition()
-        {
-            Controls.Clear();
-            _conditionPos = new Point(5, 0);
-            AddCondition();
         }
     }
 }

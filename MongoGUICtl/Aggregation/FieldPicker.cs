@@ -24,6 +24,9 @@ namespace MongoGUICtl.Aggregation
             InitializeComponent();
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
         public CtlFieldInfo.FieldMode FieldListMode { get; set; }
 
         /// <summary>
@@ -31,9 +34,18 @@ namespace MongoGUICtl.Aggregation
         /// </summary>
         public bool IsIdProtect { set; get; }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void FieldPicker_Load(object sender, EventArgs e)
         {
             GuiConfig.Translateform(Controls);
+            if (FieldListMode == CtlFieldInfo.FieldMode.Field || FieldListMode == CtlFieldInfo.FieldMode.Aggregation)
+            {
+                lblSortOrder.Visible = false;
+            }
         }
 
         /// <summary>
@@ -53,7 +65,7 @@ namespace MongoGUICtl.Aggregation
             var rtnList = new List<DataFilter.QueryFieldItem>();
             foreach (var item in _mQueryFieldList)
             {
-                rtnList.Add(((CtlFieldInfo) Controls.Find(item.ColName, true)[0]).QueryFieldItem);
+                rtnList.Add(((CtlFieldInfo)Controls.Find(item.ColName, true)[0]).QueryFieldItem);
             }
             return rtnList;
         }
@@ -69,10 +81,12 @@ namespace MongoGUICtl.Aggregation
             foreach (var item in columnList)
             {
                 //输出配置的初始化
-                var queryFieldItem = new DataFilter.QueryFieldItem();
-                queryFieldItem.ColName = item;
-                queryFieldItem.IsShow = mIsShow;
-                queryFieldItem.SortType = DataFilter.SortType.NoSort;
+                var queryFieldItem = new DataFilter.QueryFieldItem()
+                {
+                    ColName = item,
+                    IsShow = mIsShow,
+                    SortType = DataFilter.SortType.NoSort
+                };
                 if (queryFieldItem.ColName == ConstMgr.KeyId)
                 {
                     queryFieldItem.IsShow = true;
@@ -87,52 +101,63 @@ namespace MongoGUICtl.Aggregation
         ///     Aggregation用的$project和$order
         /// </summary>
         /// <returns></returns>
-        public BsonDocument GetAggregation()
+        public List<BsonDocument> GetAggregation()
         {
-            var aggregation = new BsonDocument();
+            //如果有改名的话，则其他没有改名的，也需要设定输出
+            var projectAggr = new BsonDocument();
+            var suppressAggr = new BsonDocument();
             var project = new BsonDocument();
-            var sort = new BsonDocument();
+            var suppress = new BsonDocument();
+
+            bool HasRename = false;
+
             foreach (var item in _mQueryFieldList)
             {
-                var ctl = ((CtlFieldInfo) Controls.Find(item.ColName, true)[0]).QueryFieldItem;
+                var ctl = ((CtlFieldInfo)Controls.Find(item.ColName, true)[0]).QueryFieldItem;
                 if (ctl.ColName == ConstMgr.KeyId)
                 {
+                    //id
                     if (!ctl.IsShow)
                     {
-                        project.Add(new BsonElement(ConstMgr.KeyId, 0));
+                        //id抑制
+                        suppress.Add(new BsonElement(ConstMgr.KeyId, 0));
                     }
                 }
                 else
                 {
+                    //其他字段
                     if (ctl.IsShow)
                     {
-                        project.Add(string.IsNullOrEmpty(ctl.ProjectName)
-                            ? new BsonElement(ctl.ColName, 1)
-                            : new BsonElement(ctl.ProjectName, "$" + ctl.ColName));
+                        if (string.IsNullOrEmpty(ctl.ProjectName))
+                        {
+                            project.Add(new BsonElement(ctl.ColName, 1));
+                        }
+                        else
+                        {
+                            project.Add(new BsonElement(ctl.ProjectName, "$" + ctl.ColName));
+                            HasRename = true;
+                        }
+                    }
+                    else
+                    {
+                        suppress.Add(new BsonElement(ctl.ColName, 0));
                     }
                 }
-                switch (ctl.SortType)
-                {
-                    case DataFilter.SortType.NoSort:
-                        break;
-                    case DataFilter.SortType.Ascending:
-                        sort.Add(new BsonElement(ctl.ColName, 1));
-                        break;
-                    case DataFilter.SortType.Descending:
-                        sort.Add(new BsonElement(ctl.ColName, -1));
-                        break;
-                    default:
-                        break;
-                }
             }
-            //Note The $sort cannot begin sorting documents until previous operators in the pipeline have returned all output.
-            //如果先$project，再$sort的话，全字段输出
-            if (sort.ElementCount > 0)
+            var aggrDocList = new List<BsonDocument>();
+            //如果有抑制操作和改名操作，则需要分开执行
+            suppressAggr.Add(new BsonElement("$project", suppress));
+            aggrDocList.Add(suppressAggr);
+
+            if (!HasRename && suppress.Count() == 0)
             {
-                aggregation.Add(new BsonElement("$sort", sort));
+                //没有改名和抑制的时候，则project全部去除
+                project.Clear();
             }
-            aggregation.Add(new BsonElement("$project", project));
-            return aggregation;
+
+            projectAggr.Add(new BsonElement("$project", project));
+            aggrDocList.Add(projectAggr);
+            return aggrDocList;
         }
 
         /// <summary>
@@ -145,7 +170,7 @@ namespace MongoGUICtl.Aggregation
             var project = new BsonDocument();
             foreach (var item in _mQueryFieldList)
             {
-                var ctl = ((CtlFieldInfo) Controls.Find(item.ColName, true)[0]).QueryFieldItem;
+                var ctl = ((CtlFieldInfo)Controls.Find(item.ColName, true)[0]).QueryFieldItem;
                 if (ctl.IsShow)
                 {
                     project.Add(string.IsNullOrEmpty(ctl.ProjectName)
@@ -153,7 +178,7 @@ namespace MongoGUICtl.Aggregation
                         : new BsonElement(ctl.ProjectName, "$" + ctl.ColName));
                 }
             }
-            aggregation.Add("_id", project);
+            aggregation.Add(ConstMgr.KeyId, project);
             return aggregation;
         }
 
@@ -170,19 +195,27 @@ namespace MongoGUICtl.Aggregation
             Controls.Add(lblSortOrder);
             foreach (var queryFieldItem in _mQueryFieldList.OrderBy(info => info.ColName))
             {
-                //动态加载控件
-                var ctrItem = new CtlFieldInfo
+                try
                 {
-                    Mode = FieldListMode,
-                    Name = queryFieldItem.ColName,
-                    Location = conditionPos,
-                    IsIdProtect = IsIdProtect,
-                    QueryFieldItem = queryFieldItem,
-                    Width = 450
-                };
-                Controls.Add(ctrItem);
-                //纵向位置的累加
-                conditionPos.Y += ctrItem.Height;
+                    //动态加载控件
+                    var ctrItem = new CtlFieldInfo
+                    {
+                        Mode = FieldListMode,
+                        Name = queryFieldItem.ColName,
+                        Location = conditionPos,
+                        IsIdProtect = IsIdProtect,
+                        QueryFieldItem = queryFieldItem,
+                        Width = 450
+                    };
+                    Controls.Add(ctrItem);
+                    //纵向位置的累加
+                    conditionPos.Y += ctrItem.Height;
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+
             }
         }
 
@@ -195,7 +228,7 @@ namespace MongoGUICtl.Aggregation
         {
             foreach (var item in _mQueryFieldList)
             {
-                ((CtlFieldInfo) Controls.Find(item.ColName, true)[0]).IsShow = true;
+                ((CtlFieldInfo)Controls.Find(item.ColName, true)[0]).IsShow = true;
             }
         }
 
@@ -208,7 +241,7 @@ namespace MongoGUICtl.Aggregation
         {
             foreach (var item in _mQueryFieldList)
             {
-                ((CtlFieldInfo) Controls.Find(item.ColName, true)[0]).IsShow = false;
+                ((CtlFieldInfo)Controls.Find(item.ColName, true)[0]).IsShow = false;
             }
         }
 
@@ -223,15 +256,15 @@ namespace MongoGUICtl.Aggregation
             var member = new BsonDocument();
             foreach (var item in _mQueryFieldList)
             {
-                var ctl = ((CtlFieldInfo) Controls.Find(item.ColName, true)[0]).QueryFieldItem;
-                if (ctl.IsShow && ctl.ColName != "_id")
+                var ctl = ((CtlFieldInfo)Controls.Find(item.ColName, true)[0]).QueryFieldItem;
+                if (ctl.IsShow && ctl.ColName != ConstMgr.KeyId)
                 {
                     member.Add(string.IsNullOrEmpty(ctl.ProjectName)
                         ? new BsonElement(ctl.ColName, "$" + ctl.ColName)
                         : new BsonElement(ctl.ProjectName, "$" + ctl.ColName));
                 }
             }
-            id.Add("_id", member);
+            id.Add(ConstMgr.KeyId, member);
             return id;
         }
     }

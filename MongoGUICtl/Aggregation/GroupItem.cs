@@ -25,17 +25,15 @@ namespace MongoGUICtl.Aggregation
 
         private void GroupItem_Load(object sender, EventArgs e)
         {
-            foreach (var item in AggregationHelper.GetGroupfunction())
+            foreach (var item in AggregationFunc.GetGroupfunction())
             {
                 cmbGroupFunction.Items.Add(item);
             }
+            cmbGroupFunction.Items.Add("==========");
             if (RuntimeMongoDbContext.GetCurrentCollection() != null)
             {
                 cmbGroupValue.Items.Add("1");
-                foreach (
-                    var item in
-                        MongoHelper.GetCollectionSchame(RuntimeMongoDbContext.GetCurrentCollection())
-                    )
+                foreach (var item in MongoHelper.GetCollectionSchame(RuntimeMongoDbContext.GetCurrentCollection()))
                 {
                     cmbGroupFunction.Items.Add("$" + item);
                     cmbGroupValue.Items.Add("$" + item);

@@ -5,14 +5,14 @@ using ResourceLib.Method;
 
 namespace FunctionForm.Operation
 {
-    public partial class FrmArrayCreator : Form
+    public partial class frmArrayCreator : Form
     {
         /// <summary>
         ///     BsonArray
         /// </summary>
-        public BsonArray MBsonArray;
+        public BsonArray mBsonArray;
 
-        public FrmArrayCreator()
+        public frmArrayCreator()
         {
             GuiConfig.Translateform(this);
             InitializeComponent();
@@ -45,8 +45,13 @@ namespace FunctionForm.Operation
         /// <param name="e"></param>
         private void btnOK_Click(object sender, EventArgs e)
         {
-            MBsonArray = ArrayPanel.GetBsonArray();
+            mBsonArray = ArrayPanel.GetBsonArray();
             Close();
+        }
+
+        private void frmArrayCreator_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }

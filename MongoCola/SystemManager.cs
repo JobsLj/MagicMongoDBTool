@@ -1,13 +1,13 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Windows.Forms;
-using Common;
+﻿using Common;
 using MongoCola.Config;
 using MongoUtility.Command;
 using MongoUtility.Core;
 using MongoUtility.ToolKit;
 using ResourceLib.Method;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Windows.Forms;
 
 namespace MongoCola
 {
@@ -45,14 +45,18 @@ namespace MongoCola
         {
             //MongoDB驱动版本的取得
             Debug.Print(Path.DirectorySeparatorChar.ToString());
-            var info =
-                FileVersionInfo.GetVersionInfo(Application.StartupPath + Path.DirectorySeparatorChar +
-                                               "MongoDB.Driver.dll");
+            var info = FileVersionInfo.GetVersionInfo(Application.StartupPath + Path.DirectorySeparatorChar + "MongoDB.Driver.dll");
             MongoHelper.MongoDbDriverVersion = info.ProductVersion;
-            info =
-                FileVersionInfo.GetVersionInfo(Application.StartupPath + Path.DirectorySeparatorChar +
-                                               "MongoDB.Bson.dll");
+
+            info = FileVersionInfo.GetVersionInfo(Application.StartupPath + Path.DirectorySeparatorChar + "MongoDB.Bson.dll");
             MongoHelper.MongoDbBsonVersion = info.ProductVersion;
+
+            info = FileVersionInfo.GetVersionInfo(Application.StartupPath + Path.DirectorySeparatorChar + "MongoDB.Driver.Core.dll");
+            MongoHelper.MongoDbDriverCoreVersion = info.ProductVersion;
+
+            info = FileVersionInfo.GetVersionInfo(Application.StartupPath + Path.DirectorySeparatorChar + "MongoDB.Driver.Legacy.dll");
+            MongoHelper.MongoDbDriverLegacyVersion = info.ProductVersion;
+
             //版本设定
             Version = Application.ProductVersion;
             DebugMode = false;
@@ -60,13 +64,13 @@ namespace MongoCola
             GuiConfig.IsMono = MonoMode;
             //Can't know for OSVersion to diff Mac or Unix....
             //异常处理器的初始化
-            Utility.ExceptionAppendInfo = "MongoDbDriverVersion:" + MongoHelper.MongoDbDriverVersion +
-                                          Environment.NewLine;
-            Utility.ExceptionAppendInfo += "MongoDbBsonVersion:" + MongoHelper.MongoDbBsonVersion +
-                                           Environment.NewLine;
+            Utility.ExceptionAppendInfo = "MongoDbDriverVersion:" + MongoHelper.MongoDbDriverVersion + Environment.NewLine;
+            Utility.ExceptionAppendInfo += "MongoDbBsonVersion:" + MongoHelper.MongoDbBsonVersion + Environment.NewLine;
+            Utility.ExceptionAppendInfo += "MongoDbDriverCoreVersion:" + MongoHelper.MongoDbDriverCoreVersion + Environment.NewLine;
+            Utility.ExceptionAppendInfo += "MongoDbDriverLegacyVersion:" + MongoHelper.MongoDbDriverLegacyVersion + Environment.NewLine;
             //config
             SystemConfig.AppPath = Application.StartupPath + Path.DirectorySeparatorChar;
-            MongoConfig.AppPath = Application.StartupPath + Path.DirectorySeparatorChar;
+            MongoConnectionConfigManager.AppPath = Application.StartupPath + Path.DirectorySeparatorChar;
             var localconfigfile = Application.StartupPath + Path.DirectorySeparatorChar +
                                   SystemConfig.SystemConfigFilename;
             if (File.Exists(localconfigfile))
@@ -85,13 +89,15 @@ namespace MongoCola
                 frmOption.ShowDialog();
                 SystemConfig.SaveSystemConfig();
             }
-            localconfigfile = Application.StartupPath + Path.DirectorySeparatorChar + MongoConfig.MongoConfigFilename;
+            localconfigfile = Application.StartupPath + Path.DirectorySeparatorChar + MongoConnectionConfigManager.MongoConfigFilename;
             if (File.Exists(localconfigfile))
             {
-                MongoConfig.LoadFromConfigFile();
+                MongoConnectionConfigManager.LoadFromConfigFile();
                 RuntimeMongoDbContext.MongoConnectionConfigList = MongoConnectionConfig.MongoConfig.ConnectionList;
             }
-            Application.Run(new FrmMain());
+            //服务器状态字典的初始化
+            SystemStatus.FillStatusDicName();
+            Application.Run(new frmMain());
             //delete tempfile directory when exit
             if (Directory.Exists(Gfs.TempFileFolder))
             {

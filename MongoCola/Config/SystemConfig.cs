@@ -1,18 +1,13 @@
-﻿/*
- * Created by SharpDevelop.
- * User: scs
- * Date: 2015/1/8
- * Time: 13:50
- * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
- */
-
-using System;
-using Common;
+﻿using Common;
 using FunctionForm.Status;
+using MongoDB.Bson.IO;
+using MongoDB.Driver;
 using MongoGUICtl;
 using MongoGUIView;
-using MongoUtility.Core;
+using MongoUtility.ToolKit;
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace MongoCola.Config
 {
@@ -37,8 +32,7 @@ namespace MongoCola.Config
         /// <summary>
         ///     Config Format Version
         /// </summary>
-        public byte ConfigVer = 2;
-
+        public byte ConfigVer = 4;
 
         /// <summary>
         ///     MongoBin的路径，用于Dos命令
@@ -55,8 +49,42 @@ namespace MongoCola.Config
         /// </summary>
         public bool IsDisplayNumberWithKSystem { set; get; }
 
+        /// <summary>
+        ///     GuidRepresentation
+        /// </summary>
+        public enum GuidRepresentation
+        {
+            Unspecified = 0,
+            Standard,
+            CSharpLegacy,
+            JavaLegacy,
+            PythonLegacy
+        }
 
-        [NonSerialized] public int DefaultRefreshStatusTimer = 30;
+        /// <summary>
+        ///     BsonGuidRepresentation
+        /// </summary>
+        public GuidRepresentation BsonGuidRepresentation { set; get; }
+
+        /// <summary>
+        ///     DateTimeFormat
+        /// </summary>
+        public DateTimePickerFormat DateTimeFormat { set; get; }
+        /// <summary>
+        ///     DateTimeCustomFormat
+        /// </summary>
+        public string DateTimeCustomFormat { set; get; }
+
+        /// <summary>
+        ///     JsonOutputMode
+        /// </summary>
+        public JsonOutputMode jsonMode { set; get; }
+
+        /// <summary>
+        ///     状态刷新间隔时间(初始化时候用)
+        /// </summary>
+        [NonSerialized]
+        public static int DefaultRefreshStatusTimer = 30;
 
         /// <summary>
         ///     状态刷新间隔时间
@@ -84,21 +112,19 @@ namespace MongoCola.Config
         public string UiFontFamily { get; set; }
 
         /// <summary>
+        ///     自定义系统监视项目
+        /// </summary>
+        public List<string> MonitorItems { get; set; }
+
+        /// <summary>
         ///     写入配置
         /// </summary>
         public void SaveSystemConfig()
         {
-            MongoConnectionConfig.MongoConfig.SerializableConnectionList.Clear();
-            foreach (var item in MongoConnectionConfig.MongoConfig.ConnectionList.Values)
-            {
-                MongoConnectionConfig.MongoConfig.SerializableConnectionList.Add(item);
-            }
+            if (DateTimeFormat == 0) DateTimeFormat = DateTimePickerFormat.Long;
             Utility.SaveObjAsXml(AppPath + SystemConfigFilename, this);
-            CtlTreeViewColumns.IsUtc = IsUtc;
-            CtlTreeViewColumns.IsDisplayNumberWithKSystem = IsDisplayNumberWithKSystem;
-            ViewHelper.IsUtc = IsUtc;
-            ViewHelper.IsDisplayNumberWithKSystem = IsDisplayNumberWithKSystem;
-            FrmServerMonitor.RefreshInterval = RefreshStatusTimer;
+            SystemManager.SystemConfig = this;
+            ApplyConfig();
         }
 
         /// <summary>
@@ -108,13 +134,31 @@ namespace MongoCola.Config
         public static void LoadFromConfigFile()
         {
             SystemManager.SystemConfig = Utility.LoadObjFromXml<SystemConfig>(AppPath + SystemConfigFilename);
+            ApplyConfig();
+        }
+
+        /// <summary>
+        ///     应用配置
+        /// </summary>
+        private static void ApplyConfig()
+        {
+            if (SystemManager.SystemConfig.DateTimeFormat.GetHashCode() == 0)
+            {
+                SystemManager.SystemConfig.DateTimeFormat = DateTimePickerFormat.Long;
+            }
             CtlTreeViewColumns.IsUtc = SystemManager.SystemConfig.IsUtc;
+            CtlTreeViewColumns.DateTimeFormat = SystemManager.SystemConfig.DateTimeFormat;
+            CtlTreeViewColumns.DateTimeCustomFormat = SystemManager.SystemConfig.DateTimeCustomFormat;
+            ctlBsonValue.DateTimeFormat = SystemManager.SystemConfig.DateTimeFormat;
+            ctlBsonValue.DateTimeCustomFormat = SystemManager.SystemConfig.DateTimeCustomFormat;
             CtlTreeViewColumns.IsDisplayNumberWithKSystem = SystemManager.SystemConfig.IsDisplayNumberWithKSystem;
             ViewHelper.IsUtc = SystemManager.SystemConfig.IsUtc;
             ViewHelper.IsDisplayNumberWithKSystem = SystemManager.SystemConfig.IsDisplayNumberWithKSystem;
             FrmServerMonitor.RefreshInterval = SystemManager.SystemConfig.RefreshStatusTimer;
+            MongoDefaults.GuidRepresentation = (MongoDB.Bson.GuidRepresentation)SystemManager.SystemConfig.BsonGuidRepresentation;
+            MongoHelper.JsonWriterSettings.OutputMode = SystemManager.SystemConfig.jsonMode;
+            FrmServerMonitor.MonitorItems = SystemManager.SystemConfig.MonitorItems;
         }
-
         #endregion
     }
 }

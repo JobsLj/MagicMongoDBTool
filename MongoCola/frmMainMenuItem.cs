@@ -1,9 +1,4 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Text;
-using System.Windows.Forms;
-using Common;
+﻿using Common;
 using FunctionForm.Aggregation;
 using FunctionForm.Connection;
 using FunctionForm.Extend;
@@ -21,11 +16,16 @@ using MongoUtility.Core;
 using MongoUtility.ToolKit;
 using ResourceLib.Method;
 using ResourceLib.UI;
-using FunctionForm.MachineLearning;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Windows.Forms;
 
 namespace MongoCola
 {
-    public partial class FrmMain
+    public partial class frmMain
     {
         #region"工具"
 
@@ -36,7 +36,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void ConfigfileMenuItem_Click(object sender, EventArgs e)
         {
-            Process.Start("ConfigurationFile.exe");
+            if (File.Exists("ConfigurationFile.exe")) Process.Start("ConfigurationFile.exe");
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void MultiLanguageToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Process.Start("MultiLanEditor.exe");
+            if (File.Exists("MultiLanEditor.exe")) Process.Start("MultiLanEditor.exe");
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void OptionToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmOption(), true, true);
+            UIAssistant.OpenModalForm(new FrmOption(), true, true);
             SystemManager.InitLanguage();
             if (GuiConfig.IsUseDefaultLanguage)
             {
@@ -79,7 +79,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void AddConnectionToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmConnect(), true, true);
+            UIAssistant.OpenModalForm(new frmConnect(), true, true);
             RefreshToolStripMenuItem_Click(sender, e);
         }
 
@@ -108,12 +108,12 @@ namespace MongoCola
         private void InitReplsetToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var replSetName = MyMessageBox.ShowInput("Please Fill ReplSetName :",
-                GuiConfig.GetText("ReplSetName", TextType.ReplsetInitReplset));
+                GuiConfig.GetText("ReplSetName", "Replset_InitReplset"));
             if (replSetName == string.Empty) return;
             var result = string.Empty;
             if (Operater.InitReplicaSet(replSetName, ref result))
             {
-                MyMessageBox.ShowMessage("ReplSetName", "Please refresh connection after one minute.");
+                MyMessageBox.ShowMessage("ReplSetName", "Please refresh connection after one minute.", result);
             }
             else
             {
@@ -128,10 +128,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void ReplicaSetToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var newConfig = RuntimeMongoDbContext.GetCurrentServerConfig();
-            Utility.OpenForm(new FrmReplsetMgr(ref newConfig), true, true);
-            Operater.ReplicaSet(newConfig);
-            MyMessageBox.ShowMessage("ReplSetName", "Please refresh connection after one minute.");
+            UIAssistant.OpenModalForm(new FrmReplsetMgr(), true, true);
         }
 
         /// <summary>
@@ -141,7 +138,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void ShardingConfigToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmShardingConfig(), true, true);
+            UIAssistant.OpenModalForm(new FrmShardingConfig(), true, true);
         }
 
         /// <summary>
@@ -154,10 +151,10 @@ namespace MongoCola
             DisableAllOpr();
             RefreshToolStripMenuItem.Enabled = false;
             RefreshToolStripButton.Enabled = false;
+            trvsrvlst.Nodes.Clear();
             try
             {
                 var connectionTreeNodes = UiHelper.GetConnectionNodes();
-                trvsrvlst.Nodes.Clear();
                 foreach (var element in connectionTreeNodes)
                 {
                     trvsrvlst.Nodes.Add(element);
@@ -166,12 +163,12 @@ namespace MongoCola
             }
             catch (Exception)
             {
-                trvsrvlst.Nodes.Clear();
                 trvsrvlst.Nodes.Add("丢失与数据库的连接！");
             }
             RefreshToolStripMenuItem.Enabled = true;
             RefreshToolStripButton.Enabled = true;
-            statusStripMain.Items[0].Text = GuiConfig.GetText("Ready", TextType.MainStatusBarTextReady);
+            statusStripMain.Items[0].Text = GuiConfig.GetText("Ready", "MainStatusBarTextReady");
+            if (trvsrvlst.Nodes.Count > 0) trvsrvlst.SelectedNode = trvsrvlst.Nodes[0];
         }
 
         /// <summary>
@@ -182,7 +179,6 @@ namespace MongoCola
         private void ExpandAllToolStripMenuItem_Click(object sender, EventArgs e)
         {
             trvsrvlst.BeginUpdate();
-            //trvsrvlst.ExpandAll();
             //全部展开的时候，东西太多了，只展开到Collection
             foreach (TreeNode node in trvsrvlst.Nodes)
             {
@@ -190,16 +186,20 @@ namespace MongoCola
             }
             trvsrvlst.EndUpdate();
         }
-
+        /// <summary>
+        ///     展开节点
+        /// </summary>
+        /// <param name="node"></param>
         private void ExpandNode(TreeNode node)
         {
             if (node.Tag == null) return;
             var strNodeType = TagInfo.GetTagType(node.Tag.ToString());
-            if (strNodeType != ConstMgr.CollectionTag && strNodeType != ConstMgr.GridFileSystemTag)
+            if (strNodeType != ConstMgr.CollectionTag &&
+                strNodeType != ConstMgr.GridFileSystemTag &&
+                strNodeType != ConstMgr.ViewTag)
             {
                 node.Expand();
-                if (node.Nodes.Count == 0)
-                    return;
+                if (node.Nodes.Count == 0) return;
                 foreach (TreeNode item in node.Nodes)
                 {
                     ExpandNode(item);
@@ -240,25 +240,19 @@ namespace MongoCola
         /// <param name="e"></param>
         private void CreateMongoDBToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string strDbName;
-            if (GuiConfig.IsUseDefaultLanguage)
-            {
-                strDbName = MyMessageBox.ShowInput("Please Input DataBaseName：", "Create Database");
-            }
-            else
-            {
-                strDbName =
-                    MyMessageBox.ShowInput(
-                        GuiConfig.GetText(TextType.CreateNewDataBaseInput),
-                        GuiConfig.GetText(TextType.CreateNewDataBase));
-            }
-            string errMessage;
-            if (Operater.IsDatabaseNameValid(strDbName, out errMessage))
+            //新版本如果数据库没有数据集，则数据库将被回收？
+            string strDbName = MyMessageBox.ShowInput(
+                        GuiConfig.GetText("Please Input DataBaseName：", "CreateNewDataBaseInput"),
+                        GuiConfig.GetText("Create Database", "CreateNewDataBase"));
+            if (string.IsNullOrEmpty(strDbName)) return;
+            string strInitColName = MyMessageBox.ShowInput(
+                        GuiConfig.GetText("Please Input Init CollectionName：", "CreateNewDataBaseInitCollection"),
+                        GuiConfig.GetText("Create Database", "CreateNewDataBase"));
+            if (Operater.IsDatabaseNameValid(strDbName, out string errMessage))
             {
                 try
                 {
-                    var strRusult = Operater.DataBaseOpration(RuntimeMongoDbContext.SelectObjectTag, strDbName,
-                        Operater.Oprcode.Create);
+                    var strRusult = Operater.CreateDataBaseWithInitCollection(strDbName, strInitColName);
                     if (string.IsNullOrEmpty(strRusult))
                     {
                         RefreshToolStripMenuItem_Click(sender, e);
@@ -286,35 +280,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void CopyDatabasetoolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //MongoHelper.Core.RuntimeMongoDBContext.GetCurrentServer().CopyDatabase(MongoHelper.Core.RuntimeMongoDBContext.GetCurrentDataBase().Name, MongoHelper.Core.RuntimeMongoDBContext.GetCurrentDataBase().Name + "_Backup");
-            //MongoDBHelper.ExecuteMongoDBCommand("copyDatabase", MongoHelper.Core.RuntimeMongoDBContext.GetCurrentDataBase());
-            //CommandDocument copy = new CommandDocument();
-            //MongoHelper.Core.RuntimeMongoDBContext.GetCurrentDataBase().RunCommand("copyDatabase");
-
-            Utility.OpenForm(new FrmCopyDataBase(), true, true);
-        }
-
-        /// <summary>
-        ///     获得用户信息
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void UserInfoStripMenuItem_Click(object sender, EventArgs e)
-        {
-            //foreach (var item in MongoDBHelper._mongoUserLst.Keys)
-            //{
-            var connectionName = RuntimeMongoDbContext.GetCurrentServerConfig().ConnectionName;
-            var info = RuntimeMongoDbContext.MongoUserLst[connectionName].ToString();
-            if (!string.IsNullOrEmpty(info))
-            {
-                MyMessageBox.ShowMessage(
-                    GuiConfig.IsUseDefaultLanguage
-                        ? "UserInformation"
-                        : GuiConfig.GetText(TextType.MainMenuOperationServerUserInfo),
-                    "The User Information of：[" +
-                    MongoConnectionConfig.MongoConfig.ConnectionList[connectionName].UserName + "]", info, true);
-            }
-            //}
+            UIAssistant.OpenModalForm(new frmCopyDataBase(), true, true);
         }
 
         /// <summary>
@@ -324,7 +290,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void AddUserToAdminToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmUser(true), true, true);
+            UIAssistant.OpenModalForm(new FrmUser(true), true, true);
         }
 
         /// <summary>
@@ -334,39 +300,9 @@ namespace MongoCola
         /// <param name="e"></param>
         private void AddCustomeRoleStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmAddRole(), true, true);
+            UIAssistant.OpenModalForm(new FrmAddRole(), true, true);
         }
 
-        /// <summary>
-        ///     SlaveResync
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void slaveResyncToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Operater.ResyncCommand();
-        }
-
-        /// <summary>
-        ///     Server Info
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void ServePropertyToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (GuiConfig.IsUseDefaultLanguage)
-            {
-                MyMessageBox.ShowMessage("Server Property", "Server Property",
-                    MongoHelper.GetCurrentSvrInfo(), true);
-            }
-            else
-            {
-                MyMessageBox.ShowMessage(
-                    GuiConfig.GetText(TextType.MainMenuOperationServerProperties),
-                    GuiConfig.GetText(TextType.MainMenuOperationServerProperties),
-                    MongoHelper.GetCurrentSvrInfo(), true);
-            }
-        }
 
         /// <summary>
         ///     Status
@@ -377,12 +313,22 @@ namespace MongoCola
         {
             if (SystemManager.MonoMode)
             {
-                Utility.OpenForm(new FrmStatusMono(), true, true);
+                UIAssistant.OpenModalForm(new FrmStatusMono(), true, true);
             }
             else
             {
-                Utility.OpenForm(new FrmStatus(), true, true);
+                UIAssistant.OpenModalForm(new FrmStatus(), true, true);
             }
+        }
+
+        /// <summary>
+        ///     ServerMonitor
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ServerMonitorToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            UIAssistant.OpenForm(new FrmServerMonitor(), true);
         }
 
         #endregion
@@ -396,14 +342,8 @@ namespace MongoCola
         /// <param name="e"></param>
         private void DelMongoDBToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var strTitle = "Drop Database";
-            var strMessage = "Are you really want to Drop current Database?";
-            if (!GuiConfig.IsUseDefaultLanguage)
-            {
-                strTitle = GuiConfig.GetText(TextType.DropDataBase);
-                strMessage =
-                    GuiConfig.GetText(TextType.DropDataBaseConfirm);
-            }
+            var strTitle = GuiConfig.GetText("Drop Database", "DropDataBase");
+            var strMessage = GuiConfig.GetText("Are you really want to Drop current Database?", "DropDataBaseConfirm");
             if (!MyMessageBox.ShowConfirm(strTitle, strMessage)) return;
             var strTagPrefix = TagInfo.GetTagPath(ConstMgr.CollectionTag + ":" + RuntimeMongoDbContext.SelectTagData);
             var strDbName = strTagPrefix.Split("/".ToCharArray())[(int)EnumMgr.PathLevel.Database];
@@ -411,8 +351,7 @@ namespace MongoCola
             {
                 trvsrvlst.SelectedNode = null;
             }
-            var rtnResult = Operater.DataBaseOpration(RuntimeMongoDbContext.SelectObjectTag, strDbName,
-                Operater.Oprcode.Drop);
+            var rtnResult = Operater.DropDatabase(RuntimeMongoDbContext.SelectObjectTag, strDbName);
             if (string.IsNullOrEmpty(rtnResult))
             {
                 RefreshToolStripMenuItem_Click(sender, e);
@@ -434,12 +373,12 @@ namespace MongoCola
         {
             //Advance CreateCollection
             var frm =
-                new FrmCreateCollection
+                new frmCreateCollection
                 {
                     StrSvrPathWithTag = RuntimeMongoDbContext.SelectObjectTag,
                     TreeNode = trvsrvlst.SelectedNode
                 };
-            Utility.OpenForm(frm, true, true);
+            UIAssistant.OpenModalForm(frm, true, true);
             if (frm.Result)
             {
                 //这里表示： Client / Server  一个Client 可能连结复数Server  
@@ -449,18 +388,40 @@ namespace MongoCola
                     UiHelper.FillCollectionInfoToTreeNode(
                         RuntimeMongoDbContext.GetCurrentIMongoDataBase().GetCollection<BsonDocument>(frm.CollectionName),
                         srvkey);
-                foreach (TreeNode item in trvsrvlst.SelectedNode.Nodes)
+
+                if (TagInfo.GetTagType(trvsrvlst.SelectedNode.Tag.ToString()) == ConstMgr.CollectionListTag)
                 {
-                    var strNodeType = TagInfo.GetTagType(item.Tag.ToString());
-                    if (strNodeType == ConstMgr.CollectionListTag)
+                    //选中CollectionList添加
+                    trvsrvlst.SelectedNode.Nodes.Add(newCol);
+                }
+                else
+                {
+                    //选中Database添加
+                    foreach (TreeNode item in trvsrvlst.SelectedNode.Nodes)
                     {
-                        //自己添加的Collection不是SystemCollection
-                        item.Nodes.Add(newCol);
-                        break;
+                        var strNodeType = TagInfo.GetTagType(item.Tag.ToString());
+                        if (strNodeType == ConstMgr.CollectionListTag)
+                        {
+                            //自己添加的Collection不是SystemCollection
+                            item.Nodes.Add(newCol);
+                            break;
+                        }
                     }
                 }
+
                 DisableAllOpr();
             }
+        }
+
+        /// <summary>
+        ///     CreateView
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CreateViewtoolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var frm = new frmCreateView();
+            UIAssistant.OpenModalForm(frm, true, true);
         }
 
         /// <summary>
@@ -470,7 +431,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void AddUserToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmUser(false), true, true);
+            UIAssistant.OpenModalForm(new FrmUser(false), true, true);
         }
 
         /// <summary>
@@ -480,7 +441,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void AddDBCustomeRoleStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmAddRole(), true, true);
+            UIAssistant.OpenModalForm(new FrmAddRole(), true, true);
         }
 
         /// <summary>
@@ -490,7 +451,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void evalJSToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmEvalJs(), true, true);
+            UIAssistant.OpenModalForm(new FrmEvalJs(), true, true);
         }
 
         /// <summary>
@@ -527,7 +488,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void profillingLevelToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmProfilling(), true, true);
+            UIAssistant.OpenModalForm(new FrmProfilling(), true, true);
         }
 
         /// <summary>
@@ -538,11 +499,11 @@ namespace MongoCola
         {
             if (SystemManager.MonoMode)
             {
-                Utility.OpenForm(new FrmStatusMono(), true, true);
+                UIAssistant.OpenModalForm(new FrmStatusMono(), true, true);
             }
             else
             {
-                Utility.OpenForm(new FrmStatus(), true, true);
+                UIAssistant.OpenModalForm(new FrmStatus(), true, true);
             }
         }
 
@@ -595,12 +556,26 @@ namespace MongoCola
         private void DelMongoCollectionToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var strDelTag = trvsrvlst.SelectedNode.Tag.ToString();
-            if (!Collection.DropCollection(trvsrvlst.SelectedNode)) return;
+            if (!DropCollection(trvsrvlst.SelectedNode)) return;
             MultiTabManger.SelectObjectTagDeleted(strDelTag);
             trvsrvlst.SelectedNode.Parent.Nodes.Remove(trvsrvlst.SelectedNode);
             DisableAllOpr();
         }
 
+        /// <summary>
+        ///     删除
+        /// </summary>
+        /// <param name="node"></param>
+        /// <returns></returns>
+        public bool DropCollection(TreeNode node)
+        {
+            var strTitle = GuiConfig.GetText("Drop Collection", "DropCollection");
+            var strMessage = GuiConfig.GetText("Are you sure to drop this Collection?", "DropCollectionConfirm");
+            if (!MyMessageBox.ShowConfirm(strTitle, strMessage)) return false;
+            var strPath = RuntimeMongoDbContext.SelectTagData;
+            var strCollection = strPath.Split("/".ToCharArray())[(int)EnumMgr.PathLevel.CollectionAndView];
+            return Operater.DrapCollection(strCollection);
+        }
         /// <summary>
         ///     重命名数据集
         /// </summary>
@@ -609,7 +584,7 @@ namespace MongoCola
         private void RenameCollectionToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var strOldNodeTag = trvsrvlst.SelectedNode.Tag.ToString();
-            var strNewCollectionName = Collection.RenameCollection(trvsrvlst.SelectedNode);
+            var strNewCollectionName = RenameCollection(trvsrvlst.SelectedNode);
             if (string.IsNullOrEmpty(strNewCollectionName)) return;
             var strNewNodeTag = TagInfo.ChangeName(trvsrvlst.SelectedNode.Tag.ToString(), strNewCollectionName);
             MultiTabManger.SelectObjectTagChanged(strOldNodeTag, strNewNodeTag, strNewCollectionName);
@@ -619,8 +594,50 @@ namespace MongoCola
             trvsrvlst.SelectedNode.Tag = strNewNodeTag;
             trvsrvlst.SelectedNode.ToolTipText = strNewCollectionName + Environment.NewLine;
             trvsrvlst.SelectedNode.ToolTipText += "IsCapped:" + RuntimeMongoDbContext.GetCurrentCollectionIsCapped();
-            statusStripMain.Items[0].Text = GuiConfig.GetText("selected Collection", TextType.SelectedCollection) + ":" +
+            statusStripMain.Items[0].Text = GuiConfig.GetText("selected Collection", "SelectedCollection") + ":" +
                                             RuntimeMongoDbContext.SelectTagData;
+        }
+
+        /// <summary>
+        ///     重命名
+        /// </summary>
+        /// <param name="node"></param>
+        /// <returns></returns>
+        public string RenameCollection(TreeNode node)
+        {
+            var strPath = RuntimeMongoDbContext.SelectTagData;
+            var strCollection = strPath.Split("/".ToCharArray())[(int)EnumMgr.PathLevel.CollectionAndView];
+            var strNewCollectionName = MyMessageBox.ShowInput(
+                GuiConfig.GetText("Please input new collection name：", "RenameCollectionInput"),
+                GuiConfig.GetText("Rename collection", "RenameCollection"), strCollection);
+            if (string.IsNullOrEmpty(strNewCollectionName)) return string.Empty;
+            if (Operater.RenameCollection(strCollection, strNewCollectionName))
+            {
+                return strNewCollectionName;
+            }
+            return string.Empty;
+        }
+
+        /// <summary>
+        ///     ConvertToCapped
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ConvertToCappedtoolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var maxSize = MyMessageBox.ShowInput("Please Input MaxSize(Byte)", "MaxSize", "4096");
+            if (string.IsNullOrEmpty(maxSize)) return;
+            if (long.TryParse(maxSize, out long lngMaxSize))
+            {
+                var colName = RuntimeMongoDbContext.GetCurrentCollectionName();
+                var db = RuntimeMongoDbContext.GetCurrentDataBase();
+                var result = DataBaseCommand.convertToCapped(colName, lngMaxSize, db);
+                MyMessageBox.ShowEasyMessage("ConvertToCapped", result.Response.ToString());
+            }
+            else
+            {
+                MessageBox.Show("Please Input a Number");
+            }
         }
 
         /// <summary>
@@ -630,7 +647,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void IndexManageToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmCollectionIndex(), true, true);
+            UIAssistant.OpenModalForm(new frmCollectionIndex(), true, true);
         }
 
         /// <summary>
@@ -661,24 +678,11 @@ namespace MongoCola
         private void dropJavascriptToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var strPath = RuntimeMongoDbContext.SelectTagData;
-            var strCollection = strPath.Split("/".ToCharArray())[(int)EnumMgr.PathLevel.Collection + 1];
+            var strCollection = strPath.Split("/".ToCharArray())[(int)EnumMgr.PathLevel.CollectionAndView + 1];
             var result = Operater.DelJavascript(strCollection);
             if (string.IsNullOrEmpty(result))
             {
                 var strNodeData = RuntimeMongoDbContext.SelectTagData;
-                //if (MultiTabManger.TabInfo.ContainsKey(strNodeData))
-                //{
-                //    var dataTab = MultiTabManger.TabInfo[strNodeData].Tab;
-                //    foreach (ToolStripMenuItem item in JavaScriptStripMenuItem.DropDownItems)
-                //    {
-                //        if (item.Tag != dataTab.Tag)
-                //            continue;
-                //        JavaScriptStripMenuItem.DropDownItems.Remove(item);
-                //        break;
-                //    }
-                //    tabView.Controls.Remove(dataTab);
-                //    MultiTabManger.RemoveTabInfo(strNodeData);
-                //}
                 trvsrvlst.SelectedNode.Parent.Nodes.Remove(trvsrvlst.SelectedNode);
                 DisableAllOpr();
             }
@@ -698,11 +702,11 @@ namespace MongoCola
         {
             if (SystemManager.MonoMode)
             {
-                Utility.OpenForm(new FrmStatusMono(), true, true);
+                UIAssistant.OpenModalForm(new FrmStatusMono(), true, true);
             }
             else
             {
-                Utility.OpenForm(new FrmStatus(), true, true);
+                UIAssistant.OpenModalForm(new FrmStatus(), true, true);
             }
         }
 
@@ -713,7 +717,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void validateToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmValidate(), true, true);
+            UIAssistant.OpenModalForm(new FrmValidate(), true, true);
         }
 
         /// <summary>
@@ -725,6 +729,26 @@ namespace MongoCola
         {
             var colPath = RuntimeMongoDbContext.SelectTagData;
             MessageBox.Show("Please Use Export To Excel PlugIn!");
+        }
+
+
+        /// <summary>
+        ///     显示这个Pipeline
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ViewInfoToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var pipeline = new List<BsonDocument>
+            {
+                RuntimeMongoDbContext.GetCurrentCollectionInfo()
+            };
+            var frm = new frmDataView()
+            {
+                ShowData = pipeline,
+                Title = "ViewInfo"
+            };
+            UIAssistant.OpenModalForm(frm, true, true);
         }
 
         #endregion
@@ -741,7 +765,7 @@ namespace MongoCola
             MyMessageBox.ShowMessage("Exception",
                 "Mongo Bin Path Can't be found",
                 "Mongo Bin Path[" + SystemManager.SystemConfig.MongoBinPath + "]Can't be found");
-            Utility.OpenForm(new FrmOption(), true, true);
+            UIAssistant.OpenModalForm(new FrmOption(), true, true);
             return false;
         }
 
@@ -763,13 +787,8 @@ namespace MongoCola
         /// <param name="e"></param>
         private void RestoreMongoToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var strTitle = "Restore";
-            var strMessage = "Are you sure to Restore?";
-            if (!GuiConfig.IsUseDefaultLanguage)
-            {
-                strTitle = GuiConfig.GetText(TextType.MainMenuOperationBackupAndRestoreRestore);
-                strMessage = GuiConfig.GetText(TextType.RestoreConnectionConfirm);
-            }
+            var strTitle = GuiConfig.GetText("Restore", "MainMenu.OperationBackupAndRestoreRestore");
+            var strMessage = GuiConfig.GetText("Are you sure to Restore?", "RestoreConnectionConfirm");
             if (!MyMessageBox.ShowConfirm(strTitle, strMessage))
                 return;
             if (!MongoPathCheck())
@@ -883,8 +902,8 @@ namespace MongoCola
             var strMessage = "Are you sure to Import Collection?";
             if (!GuiConfig.IsUseDefaultLanguage)
             {
-                strTitle = GuiConfig.GetText(TextType.DropData);
-                strMessage = GuiConfig.GetText(TextType.DropDataConfirm);
+                strTitle = GuiConfig.GetText("Import Collection", "Main_Menu_Operation_BackupAndRestore_Import");
+                strMessage = GuiConfig.GetText("Are you sure to Import Collection?", "");
             }
             if (!MyMessageBox.ShowConfirm(strTitle, strMessage))
                 return;
@@ -912,35 +931,13 @@ namespace MongoCola
         #region"聚合"
 
         /// <summary>
-        ///     Count
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void countToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            MyMessageBox.ShowEasyMessage("Count", "Count Result : " + QueryHelper.GetCurrentCollectionCount(null));
-        }
-
-        /// <summary>
         ///     Distinct
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void distinctToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var query = new DataFilter();
-            Utility.OpenForm(new FrmDistinct(query, false), true, true);
-        }
-
-        /// <summary>
-        ///     Group
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void groupToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            var query = new DataFilter();
-            Utility.OpenForm(new FrmGroup(query, false), true, true);
+            UIAssistant.OpenModalForm(new FrmDistinct(), true, true);
         }
 
         /// <summary>
@@ -950,7 +947,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void mapReduceToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmMapReduce(), true, true);
+            UIAssistant.OpenModalForm(new FrmMapReduce(), true, true);
         }
 
         /// <summary>
@@ -960,7 +957,7 @@ namespace MongoCola
         /// <param name="e"></param>
         private void aggregateToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmAggregation(), true, true);
+            UIAssistant.OpenModalForm(new FrmAggregation(), true, true);
         }
 
         /// <summary>
@@ -970,24 +967,42 @@ namespace MongoCola
         /// <param name="e"></param>
         private void textSearchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new FrmTextSearch(), true, true);
+            UIAssistant.OpenModalForm(new FrmTextSearch(), true, true);
         }
 
-        #endregion
-
-        #region MahcineLearning
         /// <summary>
-        /// 回归
+        ///     GeoNear
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void regressionToolStripMenuItem_Click(object sender, EventArgs e)
+        private void geoNearToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Utility.OpenForm(new frmRegression(), true, true);
+            UIAssistant.OpenModalForm(new frmGeoNear(), true, true);
         }
         #endregion
 
         #region "帮助"
+
+        private void ShellReferenceMenuItem_Click(object sender, EventArgs e)
+        {
+            Process.Start("https://docs.mongodb.com/manual/reference/mongo-shell/");
+        }
+
+        private void ShellMethod_Click(object sender, EventArgs e)
+        {
+            Process.Start("https://docs.mongodb.com/manual/reference/method/");
+        }
+
+        private void AggregationReference_Click(object sender, EventArgs e)
+        {
+            Process.Start("https://docs.mongodb.com/manual/meta/aggregation-quick-reference/");
+        }
+
+        private void MongoDBManualMenuItem_Click(object sender, EventArgs e)
+        {
+            Process.Start("https://docs.mongodb.com/manual/");
+        }
+
 
         /// <summary>
         ///     About
@@ -998,7 +1013,7 @@ namespace MongoCola
         {
             MyMessageBox.ShowMessage("About", "MongoCola",
                 GetResource.GetImage(ImageType.Smile),
-                new StreamReader("Release Note.txt", Encoding.UTF8).ReadToEnd());
+                new StreamReader("Release Note_Ver2.0.txt", Encoding.UTF8).ReadToEnd());
         }
 
         /// <summary>
@@ -1027,17 +1042,17 @@ namespace MongoCola
         /// <param name="e"></param>
         private void userGuideToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var strUrl = @"UserGuide\Chinese\index.html";
-            try
-            {
-                Process.Start(strUrl);
-            }
-            catch (Exception)
-            {
-                MessageBox.Show("HelpFile Error!");
-            }
+            Process.Start("http://www.codesnippet.info/Article/Index?ArticleId=00000062");
         }
-
+        /// <summary>
+        ///     Check Update
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CheckUpdatetoolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Process.Start("https://github.com/magicdict/MongoCola/releases");
+        }
         #endregion
     }
 }

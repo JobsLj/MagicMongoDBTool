@@ -1,7 +1,4 @@
-﻿using System;
-using System.Windows.Forms;
-using System.Windows.Forms.DataVisualization.Charting;
-using Common;
+﻿using Common;
 using MongoDB.Bson;
 using MongoGUICtl;
 using MongoGUICtl.ClientTree;
@@ -10,6 +7,10 @@ using MongoUtility.Command;
 using MongoUtility.Core;
 using ResourceLib.Method;
 using ResourceLib.Properties;
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace FunctionForm.Status
 {
@@ -33,27 +34,38 @@ namespace FunctionForm.Status
         private void frmStatus_Load(object sender, EventArgs e)
         {
             if (!GuiConfig.IsMono) Icon = GetSystemIcon.ConvertImgToIcon(Resources.KeyInfo);
+            GuiConfig.Translateform(this);
             var strType = RuntimeMongoDbContext.SelectTagType;
             var docStatus = new BsonDocument();
             cmbChartField.Visible = false;
             chartResult.Visible = false;
-            btnOpCnt.Visible = false;
             tempIsDisplayNumberWithKSystem = CtlTreeViewColumns.IsDisplayNumberWithKSystem;
             CtlTreeViewColumns.IsDisplayNumberWithKSystem = true;
+
             switch (strType)
             {
                 case ConstMgr.ServerTag:
                 case ConstMgr.SingleDbServerTag:
                     if (RuntimeMongoDbContext.GetCurrentServerConfig().LoginAsAdmin)
                     {
-                        docStatus =
-                            CommandHelper.ExecuteMongoSvrCommand(CommandHelper.ServerStatusCommand,
+                        var StatusList = new List<BsonDocument>();
+                        var Status =  CommandExecute.ExecuteMongoSvrCommand(DataBaseCommand.ServerStatusCommand,
                                 RuntimeMongoDbContext.GetCurrentServer()).Response;
-                        trvStatus.Height = trvStatus.Height*2;
-                    }
-                    if (strType == ConstMgr.ServerTag)
-                    {
-                        btnOpCnt.Visible = true;
+                        StatusList.Add(Status);
+                        try
+                        {
+                            var ServerDesripter = MongoUtility.ToolKit.MongoHelper.GetCurrentServerDescription();
+                            StatusList.Add(ServerDesripter);
+                        }
+                        catch (Exception)
+                        {
+                            //Repl的时候，无法获得                            
+                        }
+                        UiHelper.FillDataToTreeView(strType, trvStatus, StatusList, 0);
+                        trvStatus.Height = trvStatus.Height * 2;
+                        trvStatus.DatatreeView.Nodes[0].Expand();
+                        trvStatus.DatatreeView.Nodes[1].Expand();
+                        return;
                     }
                     break;
                 case ConstMgr.DatabaseTag:
@@ -139,26 +151,16 @@ namespace FunctionForm.Status
                     if (RuntimeMongoDbContext.GetCurrentServerConfig().LoginAsAdmin)
                     {
                         docStatus =
-                            CommandHelper.ExecuteMongoSvrCommand(CommandHelper.ServerStatusCommand,
+                            CommandExecute.ExecuteMongoSvrCommand(DataBaseCommand.ServerStatusCommand,
                                 RuntimeMongoDbContext.GetCurrentServer()).Response;
-                        trvStatus.Height = trvStatus.Height*2;
+                        trvStatus.Height = trvStatus.Height * 2;
                     }
                     break;
             }
-            GuiConfig.Translateform(this);
             UiHelper.FillDataToTreeView(strType, trvStatus, docStatus);
             trvStatus.DatatreeView.Nodes[0].Expand();
         }
 
-        /// <summary>
-        ///     系统监视
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void btnOpCnt_Click(object sender, EventArgs e)
-        {
-            Utility.OpenForm(new FrmServerMonitor(), true, true);
-        }
 
         private void RefreshDbStatusChart(string strField)
         {
@@ -166,32 +168,26 @@ namespace FunctionForm.Status
             chartResult.Series.Clear();
             chartResult.Titles.Clear();
             var seriesResult = new Series(strField);
+            var viewlist = RuntimeMongoDbContext.GetCurrentDBViewNameList();
             foreach (var colName in RuntimeMongoDbContext.GetCurrentDataBase().GetCollectionNames())
             {
-                DataPoint colPoint = null;
+                if (viewlist.Contains(colName)) continue;
+                DataPoint colPoint = new DataPoint(0, 0);
                 switch (strField)
                 {
                     case "AverageObjectSize":
-                        try
+                        if (RuntimeMongoDbContext.GetCurrentDataBase()
+                            .GetCollection(colName).GetStats().ObjectCount > 0)
                         {
-                            if (RuntimeMongoDbContext.GetCurrentDataBase()
-                                .GetCollection(colName).GetStats().ObjectCount > 0)
-                            {
-                                //如果没有任何对象的时候，平均值无法取得
-                                colPoint = new DataPoint(0,
-                                    RuntimeMongoDbContext.GetCurrentDataBase()
-                                        .GetCollection(colName)
-                                        .GetStats()
-                                        .AverageObjectSize);
-                            }
-                            else
-                            {
-                                colPoint = new DataPoint(0, 0);
-                            }
+                            //如果没有任何对象的时候，平均值无法取得
+                            colPoint = new DataPoint(0, RuntimeMongoDbContext.GetCurrentDataBase()
+                                    .GetCollection(colName)
+                                    .GetStats()
+                                    .AverageObjectSize);
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            Utility.ExceptionDeal(ex);
+                            colPoint = new DataPoint(0, 0);
                         }
                         break;
                     case "DataSize":
@@ -202,9 +198,6 @@ namespace FunctionForm.Status
                         colPoint = new DataPoint(0,
                             RuntimeMongoDbContext.GetCurrentDataBase().GetCollection(colName).GetStats().ExtentCount);
                         break;
-                    //case "Flags":
-                    //    ColPoint = new DataPoint(0, MongoHelper.Core.RuntimeMongoDBContext.GetCurrentDataBase().GetCollection(colName).GetStats().Flags);
-                    //    break;
                     case "IndexCount":
                         colPoint = new DataPoint(0,
                             RuntimeMongoDbContext.GetCurrentDataBase().GetCollection(colName).GetStats().IndexCount);
@@ -248,11 +241,12 @@ namespace FunctionForm.Status
             chartResult.Titles.Add(new Title(strField));
         }
 
-        private void btnClose_Click(object sender, EventArgs e)
-        {
-            Close();
-        }
 
+        /// <summary>
+        ///     切换状态
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void cmbChartField_SelectedIndexChanged(object sender, EventArgs e)
         {
             var strType = RuntimeMongoDbContext.SelectTagType;
@@ -273,6 +267,7 @@ namespace FunctionForm.Status
         }
 
         /// <summary>
+        ///     修改为初始状态
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -280,6 +275,15 @@ namespace FunctionForm.Status
         {
             //修改为初始状态
             CtlTreeViewColumns.IsDisplayNumberWithKSystem = tempIsDisplayNumberWithKSystem;
+        }
+        /// <summary>
+        ///     关闭
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnClose_Click(object sender, EventArgs e)
+        {
+            Close();
         }
     }
 }

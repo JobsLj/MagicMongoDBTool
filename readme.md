@@ -1,37 +1,83 @@
-#Release Note
-       
-* 可执行版本[需要 NET Framework 4.6] 更新时间:2016/06/18 16:00
-* 下载地址:  <http://files.cnblogs.com/files/TextEditor/ReleaseVersion.zip>
+#MongoCola
+MongoCola是一款帮助你在图形界面下查看，操作MongoDB的工具类软件。  
+本工具的目标是尽量用图形界面来代替命令脚本帮您完成一些日常的MongoDB管理工作。  
+* 本软件是完全免费的软件，您可以无条件的使用本软件的任何功能。         
+* 下载地址:  <https://github.com/magicdict/MongoCola/releases>
+* 用户手册： <http://www.codesnippet.info/Article/Index?ArticleId=00000062>
 * GitHub 项目地址 <https://github.com/magicdict/MongoCola/>
-* 版本号：Ver 2.0.0
+* GitPage 官网 <http://magicdict.github.io/MongoCola/>
+* 版本号：Ver 2.1.1
  
 ***
 
 # 开发和测试环境
 ## 操作系统：
 * Windows 7
-* Mac OSX 10.11.2
+* Mac OSX 10.12(UI效果不是很好)
 
 ***
 
 ## 运行时：
-* NET Framework 4.6
-* Mono 4.5
-* MongoDB 3.2.7 
+* NET Framework 4.6.2
+* NET Core 1.1.10
+* MongoDB 3.4.2
 
 ***
 
 ## 驱动程序
-CSharp Mongo Driver 2.2.4
+CSharp Mongo Driver 2.4.3
 
 ***
 
+# 重要事项
+
+MongoCola项目的App.config里面不要写任何东西。特别是私有路径，原因如下。  
+在Mongo Driver中会使用到System.Runtime.InteropServices.RuntimeInformation.dll这个动态连接库。  
+而如果你的插件项目也有需要RuntimeInformation这个库，请一定要保证设定私有路径，不然会参照MongoDriver的这个库。  
+但是，你只能在自己的项目里面设定，不能在MongoCola主项目里面设定。  
+同时MongoUtility项目，由于要和.Net Core共享代码，一定要注意编译条件是否设定，特别是VS版本更新的时候，可能造成编译条件的缺失。  
+
+由于该软件的核心动态链接库需要在WebPage和Winform中使用，在当前阶段的开发者，请一定注意以下几点：
+
+使用Nuget包的net463版本的DLL(Nuget包版本是4.1.0，注意，是一个0！！！)
+
+- System.Linq.dll (4.1.0.0)
+- System.Linq.Expressions.dll (4.1.0.0)
+
+需要加入Nuget包
+
+- System.Runtime.dll （4.1.0.0）
+- System.Runtime.Extensions.dll 4.1.0.0）
+- System.Runtime.InteropServices.RuntimeInformation.dll （4.0.0.0）
+- System.Xml.ReaderWriter.dll (4.1.0.0)
+
+MongoUtilityStandard正式取代MongoUtility使用在项目里面。
+由于二义性问题，只能做两份代码了。MongoUtility作为备份只是放着，但是不进行编辑了。
+
 # 项目说明
-* ExternalTools:外部工具  
-1. ConfigurationFile 配置文件编辑器
-2. MultiLanEditor 多语言文件编辑器
+C#的代码分为三个解决方案： 
+
+- MongoCola解决方案 
 * Assistant:业务逻辑和辅助类  
 * Winform:窗体和控件  
+* PlugIn：插件基类  
+ 
+- ExternalTools:解决方案     
+1. ConfigurationFile 配置文件编辑器  
+2. MultiLanEditor 多语言文件编辑器  
+3. 插件实现  
+
+- MongoCola.Core解决方案  
+1. MongoUtilityStandard：MongoUtility的.Net Core编译配置  （VS15构成OK）
+2. MongoColaWebAdmin:Asp.Net Core版的网页版程序  （VS15重新构成出错）
+
+- Master Slave Replication的废除  
+从MongoDB 3.2开始，官方全面废除主从副本，所以所有主从副本的代码都停止维护，并且从代码中删除。
+Deprecated since version 3.2: MongoDB 3.2 deprecates the use of master-slave replication for components of sharded clusters.
+详细参见官网：https://docs.mongodb.com/manual/core/master-slave/
+
+- Group功能的废除：
+按照MongoDB官方的处理意见，使用Aggregate的Group Pipeline或者MapReduce功能进行代替。
 
 # 计划
 0. Fix Bug  
@@ -47,62 +93,10 @@ CSharp Mongo Driver 2.2.4
 	用户系统
 5. Machine Learning
     加入对于机器学习方法和BI的支持
-***
-
-# 发布履历
-##Ver 2.0 2016/06/29
-1.Query增加了删除条件的功能
-2.修正了Query的一些错误
-3.机器学习：线性回归
-4.AuthMechanism
-
-##Ver 1.5 (Beta3)  2016/04/25
-以下 更新来自于   QiQi  https://github.com/1354092549
-
-
-1. 优化聚合功能
--  对齐组件，更美观
--  优化聚合管道（Aggregate）相关功能，和Mongodb官方统一，使用名词stage
--  Add Stage（应用第2条前的Add Aggregate）支持提供数组，用于一次添加多个stage
-2. 优化中文语言包
-
-##Ver 1.5(Beta2)  2016/02/17 @ Shanghai China 
-###感谢 张鹏 zp11qm12#hotmail.com 对于1，2，3点的贡献
-1. 修复了collection中数据删除不掉的bug（id应强转为ObjectId）
-2. 修改了ctlJsEditor界面，现可直接执行已经保存的javascript代码（我的团队需要这个功能）
-3. 添加了复制数据库的功能（其实是复制表，目的是为了同步javascript代码）
-4. CSharp Mongo Driver 2.2.3
-5. GFS修复重构后没有处理的功能
+6. SQL转AggregateFrame
+	原本不完整的SQL转AggregateFrame废止
+7. 服务器读写状态的实时报表：MongoStatus 和 MongoTop，需要进行强化
+	自定义监视组：改组图标的项目都是自定义的
+8. C#直接操作MongoShell
 
 ***
-
-##Ver 1.5(Beta)  2015/12/31 @ Shanghai China 
-###MongoDB 3.2.0 新功能对应版本
-1. Text Search V3 的对应：大小写敏感
-2. Partial Index 的创建  
-3. 独立外部工具 Configuration Creator 初版
-4. 创建Collection时候可以设定DocumentValidation参数
-5. MongoDump 增加 --gzip --archive
-6. 修复添加Collection后UI没有实时更新的BUG 
-
-***
-
-##Ver 1.5(Alpha)  2015/07/09 @ Shanghai China
-1. 重构代码，Mongo业务代码和界面代码分开
-2. 新代码尽可能适配MongoDriver2.0.1
-3. MongoServer尽可能用MongoClient代替
-4. 窗体TabPage管理功能的独立化
-5. TextSearch功能的修改（MongoDB 2.6之后使用不同的方法）
-6. 各种Status改用树型结构表示
-7. 新建数据库无效,删除数据库错误等问题.
-
-***
-
-# 已知BUG
-1. 新建数据库时,必须要新建一个数据集.
-2. MONO  Windows API Crash!
-3. ZedGraph For Mono Chart
-4. Status里面的列无效，MMVP和WireTiger数据集状态不同
-5. MongoBin没有设置的时候，非Windows的时候，Cmd命令无法执行的问题
-6. User命令未完成
-[Fixed]7. JS文件等不应该保存到Mongo数据库中，如果没有获得客户允许的时候（张鹏修复了这个问题）

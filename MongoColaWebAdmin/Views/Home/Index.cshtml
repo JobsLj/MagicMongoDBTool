@@ -1,0 +1,37 @@
+﻿@using MongoUtility.Core;
+@{
+    ViewData["Title"] = "Home Page";
+}
+<br />
+<br />
+<p class="alert alert-info">
+    数据库列表
+</p>
+<br />
+<div>
+    <table class="table table-striped">
+        <tr>
+            <th>名称</th>
+            <th>主机</th>
+            <th>端口</th>
+            <th>用户</th>
+            <th>副本成员</th>
+            <th>操作</th>
+        </tr>
+        @foreach (MongoConnectionConfig item in MongoConnectionConfig.MongoConfig.ConnectionList.Values)
+        {
+            <tr>
+                <td>@item.ConnectionName</td>
+                <td>@item.Host</td>
+                <td>@item.Port</td>
+                <td>@item.UserName</td>
+                <td>@item.ReplSetName</td>
+                <td>
+                    <a class="btn btn-success" href="/Home/MainPanel?ConnectionName=@item.ConnectionName">连接</a>
+                    <a class="btn btn-primary" href="/ModifyConnection/Index?ConnectionName=@item.ConnectionName">修改</a>
+                    <a class="btn btn-danger">删除</a>
+                </td>
+            </tr>
+        }
+    </table>
+</div>

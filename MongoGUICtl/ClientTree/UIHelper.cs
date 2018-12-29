@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Windows.Forms;
-using Common;
+﻿using Common;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoUtility.Basic;
 using MongoUtility.Core;
 using ResourceLib.Method;
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace MongoGUICtl.ClientTree
 {
@@ -22,8 +22,10 @@ namespace MongoGUICtl.ClientTree
         /// <param name="dataList"></param>
         public static void FillDataToTreeView(string collectionName, CtlTreeViewColumns trvData, BsonDocument dataList)
         {
-            var docList = new List<BsonDocument>();
-            docList.Add(dataList);
+            var docList = new List<BsonDocument>
+            {
+                dataList
+            };
             FillDataToTreeView(collectionName, trvData, docList, 0);
         }
 
@@ -34,8 +36,7 @@ namespace MongoGUICtl.ClientTree
         /// <param name="trvData"></param>
         /// <param name="dataList"></param>
         /// <param name="mSkip"></param>
-        public static void FillDataToTreeView(string collectionName, CtlTreeViewColumns trvData,
-            List<BsonDocument> dataList, int mSkip)
+        public static void FillDataToTreeView(string collectionName, CtlTreeViewColumns trvData, List<BsonDocument> dataList, int mSkip)
         {
             trvData.ContentData = dataList;
             trvData.DatatreeView.BeginUpdate();
@@ -45,26 +46,10 @@ namespace MongoGUICtl.ClientTree
             foreach (var item in dataList)
             {
                 var dataNode = new TreeNode(collectionName + "[" + (skipCnt + count) + "]");
-                //这里保存真实的主Key数据，删除的时候使用
-                switch (collectionName)
+                if (item.TryGetElement(ConstMgr.KeyId, out BsonElement id))
                 {
-                    case ConstMgr.CollectionNameGfsFiles:
-                        dataNode.Tag = item.GetElement(1).Value;
-                        break;
-                    case ConstMgr.CollectionNameUser:
-                        dataNode.Tag = item.GetElement(1).Value;
-                        break;
-                    //case COLLECTION_NAME_ROLE:
-                    //    dataNode.Tag = item.GetElement(1).Value;
-                    //    break;
-                    default:
-                        //SelectDocId属性的设置,
-                        //2012/03/19 不一定id是在第一位
-                        //这里是为了操作顶层节点的删除，修改用的，所以必须要放item.GetElement(0).Value;
-                        BsonElement id;
-                        item.TryGetElement(ConstMgr.KeyId, out id);
-                        dataNode.Tag = id.Value != null ? id.Value : item.GetElement(0).Value;
-                        break;
+                    //这里保存真实的主Key数据，修改和删除的时候使用
+                    dataNode.Tag = item.GetElement(ConstMgr.KeyId).Value;
                 }
                 AddBsonDocToTreeNode(dataNode, item);
                 trvData.DatatreeView.Nodes.Add(dataNode);
@@ -102,9 +87,41 @@ namespace MongoGUICtl.ClientTree
                     }
                     else
                     {
-                        var elementNode = new TreeNode(item.Name);
-                        elementNode.Tag = item;
+                        var elementNode = new TreeNode(item.Name)
+                        {
+                            Tag = item
+                        };
                         treeNode.Nodes.Add(elementNode);
+                        if (item.Value.IsObjectId)
+                        {
+                            //objId的展开
+                            ObjectId oid = item.Value.AsObjectId;
+                            var oidCreateTime = new TreeNode("CreationTime")
+                            {
+                                Tag = BsonDateTime.Create(oid.CreationTime)
+                            };
+                            var oidMachine = new TreeNode("Machine")
+                            {
+                                Tag = BsonInt32.Create(oid.Machine)
+                            };
+                            var oidPid = new TreeNode("Pid")
+                            {
+                                Tag = BsonInt32.Create(oid.Pid)
+                            };
+                            var oidIncrement = new TreeNode("Increment")
+                            {
+                                Tag = BsonInt32.Create(oid.Increment)
+                            };
+                            var oidTimestamp = new TreeNode("Timestamp")
+                            {
+                                Tag = BsonInt32.Create(oid.Timestamp)
+                            };
+                            elementNode.Nodes.Add(oidCreateTime);
+                            elementNode.Nodes.Add(oidMachine);
+                            elementNode.Nodes.Add(oidPid);
+                            elementNode.Nodes.Add(oidIncrement);
+                            elementNode.Nodes.Add(oidTimestamp);
+                        }
                     }
                 }
             }
@@ -139,7 +156,7 @@ namespace MongoGUICtl.ClientTree
                     }
                     else
                     {
-                        var newSubItem = new TreeNode(arrayName + "[" + count + "]") {Tag = subItem};
+                        var newSubItem = new TreeNode(arrayName + "[" + count + "]") { Tag = subItem };
                         newItem.Nodes.Add(newSubItem);
                     }
                 }
@@ -159,21 +176,31 @@ namespace MongoGUICtl.ClientTree
             foreach (var mongoConnKey in mongoConnClientLst.Keys)
             {
                 var mongoClient = mongoConnClientLst[mongoConnKey];
+                try
+                {
+                    mongoClient.GetServer().Connect();
+                }
+                catch (TimeoutException)
+                {
+                    //TimeOut，则这个Health为False
+                    mongoConConfigLst[mongoConnKey].Health = false;
+                    connectionNodes.Add(new TreeNode(mongoConnKey + "[Error]"));
+                    continue;
+                }
                 var connectionNode = new TreeNode();
+                var config = mongoConConfigLst[mongoConnKey];
                 try
                 {
                     //ReplSetName只能使用在虚拟的Replset服务器，Sharding体系等无效。虽然一个Sharding可以看做一个ReplSet
-                    var config = mongoConConfigLst[mongoConnKey];
-                    connectionNode.SelectedImageIndex = (int) GetSystemIcon.MainTreeImageType.Connection;
-                    connectionNode.ImageIndex = (int) GetSystemIcon.MainTreeImageType.Connection;
+                    connectionNode.SelectedImageIndex = (int)GetSystemIcon.MainTreeImageType.Connection;
+                    connectionNode.ImageIndex = (int)GetSystemIcon.MainTreeImageType.Connection;
                     //ReplSet服务器需要Connect才能连接。可能因为这个是虚拟的服务器，没有Mongod实体。
                     //不过现在改为全部显示的打开连接
                     connectionNode.Text = mongoConnKey;
                     //形成树型菜单的方法
                     var singleConnection = GetInstanceNode(mongoConnKey, ref config, mongoClient);
                     connectionNode.Nodes.Add(singleConnection);
-                    config.ServerRole = MongoConnectionConfig.SvrRoleType.DataSvr;
-                    connectionNode.Tag = TagInfo.CreateTagInfo(config.ConnectionName);
+                    connectionNode.Tag = TagInfo.CreateTagInfo(config);
                     //设定是否可用
                     config.Health = true;
                     mongoConConfigLst[mongoConnKey] = config;
@@ -188,29 +215,27 @@ namespace MongoGUICtl.ClientTree
                         case MongoConnectionConfig.SvrRoleType.ReplsetSvr:
                             connectionNode.Text = "[Replset]  " + connectionNode.Text;
                             break;
-                        case MongoConnectionConfig.SvrRoleType.MasterSvr:
-                            connectionNode.Text = "[Master]  " + connectionNode.Text;
-                            break;
-                        case MongoConnectionConfig.SvrRoleType.SlaveSvr:
-                            connectionNode.Text = "[Slave]  " + connectionNode.Text;
-                            break;
                     }
                     connectionNodes.Add(connectionNode);
                 }
                 catch (MongoAuthenticationException ex)
                 {
+                    config.Health = false;
                     AuthenticationExceptionHandler(ex, connectionNodes, connectionNode, mongoConnKey);
                 }
                 catch (MongoCommandException ex)
                 {
+                    config.Health = false;
                     MongoCommandExceptionHandle(ex, connectionNodes, connectionNode, mongoConnKey);
                 }
                 catch (MongoConnectionException ex)
                 {
+                    config.Health = false;
                     MongoConnectionExceptionHandle(ex, connectionNodes, connectionNode, mongoConnKey);
                 }
                 catch (Exception ex)
                 {
+                    config.Health = false;
                     ExceptionHandle(ex, connectionNodes, connectionNode, mongoConnKey);
                 }
             }
@@ -225,14 +250,8 @@ namespace MongoGUICtl.ClientTree
             //需要验证的数据服务器，没有Admin权限无法获得数据库列表
             if (!GuiConfig.IsUseDefaultLanguage)
             {
-                connectionNode.Text += "[" +
-                                       GuiConfig.GetText(
-                                           TextType.ExceptionAuthenticationException) + "]";
-                Utility.ExceptionDeal(ex,
-                    GuiConfig.GetText(
-                        TextType.ExceptionAuthenticationException),
-                    GuiConfig.GetText(
-                        TextType.ExceptionAuthenticationExceptionNote));
+                connectionNode.Text += "[" + GuiConfig.GetText("ExceptionAuthenticationException") + "]";
+                Utility.ExceptionDeal(ex, GuiConfig.GetText("ExceptionAuthenticationException"), GuiConfig.GetText("ExceptionAuthenticationExceptionNote"));
             }
             else
             {
@@ -253,14 +272,8 @@ namespace MongoGUICtl.ClientTree
             {
                 if (!GuiConfig.IsUseDefaultLanguage)
                 {
-                    connectionNode.Text += "[" +
-                                           GuiConfig.GetText(
-                                               TextType.ExceptionAuthenticationException) + "]";
-                    Utility.ExceptionDeal(ex,
-                        GuiConfig.GetText(
-                            TextType.ExceptionAuthenticationException),
-                        GuiConfig.GetText(
-                            TextType.ExceptionAuthenticationExceptionNote));
+                    connectionNode.Text += "[" + GuiConfig.GetText("ExceptionAuthenticationException") + "]";
+                    Utility.ExceptionDeal(ex, GuiConfig.GetText("ExceptionAuthenticationException"), GuiConfig.GetText("ExceptionAuthenticationExceptionNote"));
                 }
                 else
                 {
@@ -272,12 +285,8 @@ namespace MongoGUICtl.ClientTree
             {
                 if (!GuiConfig.IsUseDefaultLanguage)
                 {
-                    connectionNode.Text += "[" +
-                                           GuiConfig.GetText(
-                                               TextType.ExceptionNotConnected) + "]";
-                    Utility.ExceptionDeal(ex,
-                        GuiConfig.GetText(TextType.ExceptionNotConnected),
-                        "Unknown Exception");
+                    connectionNode.Text += "[" + GuiConfig.GetText("ExceptionNotConnected") + "]";
+                    Utility.ExceptionDeal(ex, GuiConfig.GetText("ExceptionNotConnected"), "Unknown Exception");
                 }
                 else
                 {
@@ -300,12 +309,8 @@ namespace MongoGUICtl.ClientTree
             //2.认证模式不正确
             if (!GuiConfig.IsUseDefaultLanguage)
             {
-                connectionNode.Text += "[" +
-                                       GuiConfig.GetText(
-                                           TextType.ExceptionNotConnected) + "]";
-                Utility.ExceptionDeal(ex,
-                    GuiConfig.GetText(TextType.ExceptionNotConnected),
-                    GuiConfig.GetText(TextType.ExceptionNotConnectedNote));
+                connectionNode.Text += "[" + GuiConfig.GetText("ExceptionNotConnected") + "]";
+                Utility.ExceptionDeal(ex, GuiConfig.GetText("ExceptionNotConnected"), GuiConfig.GetText("ExceptionNotConnectedNote"));
             }
             else
             {
@@ -323,12 +328,8 @@ namespace MongoGUICtl.ClientTree
         {
             if (!GuiConfig.IsUseDefaultLanguage)
             {
-                connectionNode.Text += "[" +
-                                       GuiConfig.GetText(
-                                           TextType.ExceptionNotConnected) + "]";
-                Utility.ExceptionDeal(ex,
-                    GuiConfig.GetText(TextType.ExceptionNotConnected),
-                    "Unknown Exception");
+                connectionNode.Text += "[" + GuiConfig.GetText("ExceptionNotConnected") + "]";
+                Utility.ExceptionDeal(ex, GuiConfig.GetText("ExceptionNotConnected"), "Unknown Exception");
             }
             else
             {
@@ -355,8 +356,8 @@ namespace MongoGUICtl.ClientTree
             //无论如何，都改为主要服务器读优先
             var svrInstanceNode = new TreeNode();
             var connSvrKey = mongoConnKey + "/" + mongoConnKey;
-            svrInstanceNode.SelectedImageIndex = (int) GetSystemIcon.MainTreeImageType.WebServer;
-            svrInstanceNode.ImageIndex = (int) GetSystemIcon.MainTreeImageType.WebServer;
+            svrInstanceNode.SelectedImageIndex = (int)GetSystemIcon.MainTreeImageType.WebServer;
+            svrInstanceNode.ImageIndex = (int)GetSystemIcon.MainTreeImageType.WebServer;
             svrInstanceNode.Text = "Server";
             if (!string.IsNullOrEmpty(config.UserName) & !string.IsNullOrEmpty(config.Password))
             {
@@ -365,14 +366,14 @@ namespace MongoGUICtl.ClientTree
             }
             //获取ReadOnly
             config.IsReadOnly = false;
-            if (!string.IsNullOrEmpty(config.DataBaseName))
+            if (!string.IsNullOrEmpty(config.DataBaseName) && (!config.DataBaseName.Equals(ConstMgr.DatabaseNameAdmin)))
             {
                 //单数据库模式
                 var mongoSingleDbNode = FillDataBaseInfoToTreeNode(config.DataBaseName,
-                    mongoConnKey + "/" + mongoConnKey, null);
+                    mongoConnKey + "/" + mongoConnKey, mongoClient);
                 mongoSingleDbNode.Tag = ConstMgr.SingleDatabaseTag + ":" + connSvrKey + "/" + config.DataBaseName;
-                mongoSingleDbNode.SelectedImageIndex = (int) GetSystemIcon.MainTreeImageType.Database;
-                mongoSingleDbNode.ImageIndex = (int) GetSystemIcon.MainTreeImageType.Database;
+                mongoSingleDbNode.SelectedImageIndex = (int)GetSystemIcon.MainTreeImageType.Database;
+                mongoSingleDbNode.ImageIndex = (int)GetSystemIcon.MainTreeImageType.Database;
                 svrInstanceNode.Nodes.Add(mongoSingleDbNode);
                 svrInstanceNode.Tag = ConstMgr.SingleDbServerTag + ":" + connSvrKey;
             }
@@ -380,25 +381,41 @@ namespace MongoGUICtl.ClientTree
             {
                 var setting = RuntimeMongoDbContext.CreateMongoClientSettingsByConfig(ref config);
                 var client = new MongoClient(setting);
-                var databaseNameList = GetConnectionInfo.GetDatabaseList(client);
-                foreach (var strDbName in databaseNameList)
+                //这里MongoServerInstanceType和SvrRoleType的概念有些重叠
+                client.GetServer().Connect();
+
+                if (!string.IsNullOrEmpty(client.GetServer().ReplicaSetName))
+                {
+                    //如果是副本的话Instance则无效，Instance(s)有效
+                    config.ServerRole = MongoConnectionConfig.SvrRoleType.ReplsetSvr;
+                }
+                else
+                {
+                    if (client.GetServer().Instance.InstanceType == MongoServerInstanceType.ShardRouter)
+                    {
+                        //无法获得数据库列表
+                        config.ServerRole = MongoConnectionConfig.SvrRoleType.ShardSvr;
+                    }
+                }
+                var databaseNameList = ConnectionInfo.GetDatabaseInfoList(client);
+                foreach (var DbPropertyDoc in databaseNameList)
                 {
                     TreeNode mongoDbNode;
                     try
                     {
-                        var dbName = strDbName.GetElement("name").Value.ToString();
+                        var dbName = DbPropertyDoc.GetElement("name").Value.ToString();
                         mongoDbNode = FillDataBaseInfoToTreeNode(dbName, connSvrKey, client);
-                        mongoDbNode.ImageIndex = (int) GetSystemIcon.MainTreeImageType.Database;
-                        mongoDbNode.SelectedImageIndex = (int) GetSystemIcon.MainTreeImageType.Database;
+                        mongoDbNode.ImageIndex = (int)GetSystemIcon.MainTreeImageType.Database;
+                        mongoDbNode.SelectedImageIndex = (int)GetSystemIcon.MainTreeImageType.Database;
                         svrInstanceNode.Nodes.Add(mongoDbNode);
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        Utility.ExceptionDeal(ex, strDbName + "Exception", strDbName + "Exception");
-                        mongoDbNode = new TreeNode(strDbName + " (Exception)")
+                        //Utility.ExceptionDeal(ex, strDbName + "Exception", strDbName + "Exception");
+                        mongoDbNode = new TreeNode(DbPropertyDoc.GetElement("name").Value.ToString() + "(Exception)")
                         {
-                            ImageIndex = (int) GetSystemIcon.MainTreeImageType.Database,
-                            SelectedImageIndex = (int) GetSystemIcon.MainTreeImageType.Database
+                            ImageIndex = (int)GetSystemIcon.MainTreeImageType.Database,
+                            SelectedImageIndex = (int)GetSystemIcon.MainTreeImageType.Database
                         };
                         svrInstanceNode.Nodes.Add(mongoDbNode);
                     }

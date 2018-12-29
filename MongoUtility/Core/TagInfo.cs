@@ -36,10 +36,23 @@ namespace MongoUtility.Core
         /// <summary>
         ///     CreateTagInfo
         /// </summary>
-        /// <param name="connectionName"></param>
-        public static TagInfo CreateTagInfo(string connectionName)
+        /// <param name="config"></param>
+        public static TagInfo CreateTagInfo(MongoConnectionConfig config)
         {
-            var tagString = ConstMgr.ConnectionTag + ":" + connectionName;
+            var tagString = ConstMgr.ConnectionTag + ":" + config.ConnectionName;
+            switch (config.ServerRole)
+            {
+                case MongoConnectionConfig.SvrRoleType.ReplsetSvr:
+                    tagString = ConstMgr.ConnectionReplsetTag + ":" + config.ConnectionName;
+                    break;
+                case MongoConnectionConfig.SvrRoleType.ShardSvr:
+                    tagString = ConstMgr.ConnectionClusterTag + ":" + config.ConnectionName;
+                    break;
+                default:
+                    tagString = ConstMgr.ConnectionTag + ":" + config.ConnectionName;
+                    break;
+            }
+
             return GetMongoObj(tagString);
         }
 
@@ -96,6 +109,7 @@ namespace MongoUtility.Core
         }
 
         /// <summary>
+        ///     根据标签类型计算层级
         /// </summary>
         /// <param name="strTagType"></param>
         /// <returns></returns>
@@ -111,7 +125,8 @@ namespace MongoUtility.Core
                     level = EnumMgr.PathLevel.Database;
                     break;
                 case ConstMgr.CollectionTag:
-                    level = EnumMgr.PathLevel.Collection;
+                case ConstMgr.ViewTag:
+                    level = EnumMgr.PathLevel.CollectionAndView;
                     break;
             }
             return level;
@@ -147,7 +162,7 @@ namespace MongoUtility.Core
         public static string GetNameFromTag(string strTag)
         {
             var arr = strTag.Split("/".ToCharArray());
-            return arr[arr.Length - 1];
+            return arr[arr.Length - 1]; 
         }
 
         /// <summary>

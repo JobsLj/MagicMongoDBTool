@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Windows.Forms;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
 using MongoUtility.Basic;
 using MongoUtility.Core;
 using MongoUtility.ToolKit;
 using ResourceLib.Method;
 using ResourceLib.UI;
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace FunctionForm.Connection
 {
@@ -31,7 +31,7 @@ namespace FunctionForm.Connection
         {
             InitializeComponent();
             intPort.Value = ConstMgr.MongodDefaultPort;
-            foreach (var item in Enum.GetValues(typeof (EnumMgr.StorageEngineType)))
+            foreach (var item in Enum.GetValues(typeof(EnumMgr.StorageEngineType)))
             {
                 cmbStorageEngine.Items.Add(item);
                 cmbStorageEngine.SelectedIndex = 0;
@@ -45,7 +45,7 @@ namespace FunctionForm.Connection
         public FrmConnectionMgr(string connectionName)
         {
             InitializeComponent();
-            foreach (var item in Enum.GetValues(typeof (EnumMgr.StorageEngineType)))
+            foreach (var item in Enum.GetValues(typeof(EnumMgr.StorageEngineType)))
             {
                 cmbStorageEngine.Items.Add(item);
                 cmbStorageEngine.SelectedIndex = 0;
@@ -62,7 +62,7 @@ namespace FunctionForm.Connection
                 lstHost.Items.Add(item);
             }
             cmbStorageEngine.SelectedIndex = ModifyConn.StorageEngine == EnumMgr.StorageEngineType.MmaPv1 ? 0 : 1;
-            cmdAdd.Text = GuiConfig.IsUseDefaultLanguage ? "Modify" : GuiConfig.GetText(TextType.CommonModify);
+            cmdAdd.Text = GuiConfig.IsUseDefaultLanguage ? "Modify" : GuiConfig.GetText("Common.Modify");
         }
 
         /// <summary>
@@ -82,6 +82,12 @@ namespace FunctionForm.Connection
             cmdAdd.BackColor = GuiConfig.SuccessColor;
             cmdCancel.BackColor = GuiConfig.FailColor;
             GuiConfig.Translateform(this);
+            //修改模式
+            if (!string.IsNullOrEmpty(OldConnectionName))
+            {
+                cmdAdd.Text = GuiConfig.IsUseDefaultLanguage ? "Modify" : GuiConfig.GetText("Common.Modify");
+            }
+            //MonoUI兼容性对应
             GuiConfig.MonoCompactControl(Controls);
         }
 
@@ -92,8 +98,18 @@ namespace FunctionForm.Connection
         /// <param name="e"></param>
         private void cmdAdd_Click(object sender, EventArgs e)
         {
-            CreateConnection();
             var newCollectionName = txtConnectionName.Text;
+            if (string.IsNullOrEmpty(newCollectionName))
+            {
+                MyMessageBox.ShowMessage("Connection", "Please Input ConnectionName");
+                return;
+            }
+            if (newCollectionName.Contains(":"))
+            {
+                MyMessageBox.ShowMessage("Connection", "Please Remove : from ConnectionName");
+                return;
+            }
+            if (!CreateConnection()) return;
             if (OldConnectionName != string.Empty)
             {
                 //如果有旧名称，说明是修改模式
@@ -129,7 +145,7 @@ namespace FunctionForm.Connection
         /// <param name="e"></param>
         private void cmdTest_Click(object sender, EventArgs e)
         {
-            CreateConnection();
+            if (!CreateConnection()) return;
             try
             {
                 var srv = RuntimeMongoDbContext.CreateMongoServer(ref ModifyConn);
@@ -142,11 +158,7 @@ namespace FunctionForm.Connection
                 //需要验证的数据服务器，没有Admin权限无法获得数据库列表
                 if (!GuiConfig.IsUseDefaultLanguage && !GuiConfig.IsMono)
                 {
-                    MyMessageBox.ShowMessage(
-                        GuiConfig.GetText(
-                            TextType.ExceptionAuthenticationException),
-                        GuiConfig.GetText(
-                            TextType.ExceptionAuthenticationExceptionNote), ex.ToString(), true);
+                    MyMessageBox.ShowMessage(GuiConfig.GetText("ExceptionAuthenticationException"), GuiConfig.GetText("ExceptionAuthenticationExceptionNote"), ex.ToString(), true);
                 }
                 else
                 {
@@ -162,11 +174,7 @@ namespace FunctionForm.Connection
                 //2.认证模式不正确
                 if (!GuiConfig.IsUseDefaultLanguage && !GuiConfig.IsMono)
                 {
-                    MyMessageBox.ShowMessage(
-                        GuiConfig.GetText(TextType.ExceptionNotConnected),
-                        GuiConfig.GetText(
-                            TextType.ExceptionNotConnectedNote),
-                        ex.ToString(), true);
+                    MyMessageBox.ShowMessage(GuiConfig.GetText("ExceptionNotConnected"), GuiConfig.GetText("ExceptionNotConnectedNote"), ex.ToString(), true);
                 }
                 else
                 {
@@ -179,7 +187,7 @@ namespace FunctionForm.Connection
         /// <summary>
         ///     新建连接
         /// </summary>
-        private void CreateConnection()
+        private bool CreateConnection()
         {
             //更新数据模型
             UiBinding.TryUpdateModel(ModifyConn, Controls);
@@ -194,29 +202,33 @@ namespace FunctionForm.Connection
                 if (strException != string.Empty)
                 {
                     MyMessageBox.ShowMessage("Url Exception", "Url Formation，please check it", strException);
+                    return false;
                 }
             }
             else
             {
-                //仅有用户名或密码
-                if (txtUsername.Text != string.Empty && txtPassword.Text == string.Empty)
+                if (!string.IsNullOrEmpty(txtUsername.Text) && string.IsNullOrEmpty(txtPassword.Text) && !chkInputPasswordOnConnect.Checked)
                 {
+                    //仅有用户名，没有密码，也没有设置为连接时输入
                     MessageBox.Show("Please Input Password");
-                    return;
+                    return false;
                 }
-                if (txtUsername.Text == string.Empty && txtPassword.Text != string.Empty)
+                if (string.IsNullOrEmpty(txtUsername.Text) && !string.IsNullOrEmpty(txtPassword.Text))
                 {
+                    //仅有密码
                     MessageBox.Show("Please Input UserName");
-                    return;
+                    return false;
                 }
+                //清空密码，不论是否输入
+                if (chkInputPasswordOnConnect.Checked) ModifyConn.Password = string.Empty;
                 //数据库名称存在，则必须输入用户名和密码
-                if (txtDataBaseName.Text != string.Empty)
+                if (!string.IsNullOrEmpty(txtDataBaseName.Text))
                 {
-                    //用户名或者密码为空
-                    if (txtUsername.Text == string.Empty || txtPassword.Text == string.Empty)
+                    //用户名为空或者（密码为空且不是连接时输入）
+                    if (string.IsNullOrEmpty(txtUsername.Text) || (string.IsNullOrEmpty(txtPassword.Text) && !chkInputPasswordOnConnect.Checked))
                     {
                         MessageBox.Show("Please Input UserName or Password");
-                        return;
+                        return false;
                     }
                 }
                 if (ModifyConn.IsUseDefaultSetting)
@@ -240,6 +252,7 @@ namespace FunctionForm.Connection
                     ModifyConn.ReplsetList.Add(item);
                 }
             }
+            return true;
         }
 
         /// <summary>
@@ -250,8 +263,8 @@ namespace FunctionForm.Connection
         private void cmdAddHost_Click(object sender, EventArgs e)
         {
             var strHost = string.Empty;
-            if (string.IsNullOrEmpty(strHost)) return;
             strHost = txtReplHost.Text;
+            if (string.IsNullOrEmpty(strHost)) return;
             if (intReplPort.Value == 0) return;
             strHost += ":" + intReplPort.Value;
             lstHost.Items.Add(strHost);

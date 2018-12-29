@@ -10,6 +10,8 @@ using MongoUtility.Command;
 using MongoUtility.Core;
 using ResourceLib.Method;
 using ResourceLib.Properties;
+using ICSharpCode.TextEditor.Document;
+using MongoUtility.Basic;
 
 namespace MongoGUIView
 {
@@ -33,18 +35,18 @@ namespace MongoGUIView
         /// </summary>
         public string JsName { set; get; }
 
+        /// <summary>
+        ///     加载窗体
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void JsEditor_Load(object sender, EventArgs e)
         {
             if (DesignMode) return;
             GuiConfig.Translateform(Controls);
             SaveStripButton.Image = Resources.save.ToBitmap();
-//            if (!string.IsNullOrEmpty(JsName))
-//            {
-//                txtEditJavaScript.Text = Operater.LoadJavascript(JsName, RuntimeMongoDbContext.GetCurrentCollection());
-//                txtEditJavaScript.Select(0, 0);
-//            }
-//            txtEditJavaScript.GotFocus += (x, y) => { RuntimeMongoDbContext.SelectObjectTag = StrDBtag; };
-
+            this.txtEvalJavaScript.Document.HighlightingStrategy = HighlightingStrategyFactory.CreateHighlightingStrategy(ConstMgr.CSharp);
+            this.txtEditJavaScript.Document.HighlightingStrategy = HighlightingStrategyFactory.CreateHighlightingStrategy(ConstMgr.CSharp);
 
             if (!string.IsNullOrEmpty(JsName))
             {
@@ -83,7 +85,7 @@ namespace MongoGUIView
                 var str = Operater.SaveEditorJavascript(JsName, txtEditJavaScript.Text,
                     RuntimeMongoDbContext.GetCurrentCollection());
                 if (string.IsNullOrEmpty(str))
-                    txtEvalJavaScript.Text = "保存成功\r\n";
+                    txtEvalJavaScript.Text = "保存成功" + System.Environment.NewLine;
             }
             else
             {
@@ -111,7 +113,7 @@ namespace MongoGUIView
                 try
                 {
                     mStreamWriter.Write(txtEditJavaScript.Text);
-                    txtEvalJavaScript.Text += "文件同步成功\r\n";
+                    txtEvalJavaScript.Text += "文件同步成功" + System.Environment.NewLine;
                 }
                 catch (Exception exception)
                 {
@@ -146,7 +148,7 @@ namespace MongoGUIView
         /// <param name="e"></param>
         private void butOpenFile_Click(object sender, EventArgs e)
         {
-            var open = new OpenFileDialog {Filter = "JavaScript文件(*.js)|*.js"};
+            var open = new OpenFileDialog { Filter = Common.Utility.JsFilter };
             if (open.ShowDialog() == DialogResult.OK)
             {
                 txtFile.Text = open.FileName;
@@ -165,7 +167,7 @@ namespace MongoGUIView
 
             try
             {
-                var args = new EvalArgs {Code = js};
+                var args = new EvalArgs { Code = js };
                 var result = mongoDb.Eval(args);
                 txtEvalJavaScript.Text = ToJson(result);
             }
@@ -182,6 +184,7 @@ namespace MongoGUIView
         /// <param name="e"></param>
         private void CtlJsEditor_KeyPress(object sender, KeyPressEventArgs e)
         {
+
         }
 
         /// <summary>
@@ -257,22 +260,22 @@ namespace MongoGUIView
 
         private EnumMousePointPosition MousePointPosition(Size size, MouseEventArgs e)
         {
-            return (e.X >= -1*Band) | (e.X <= size.Width) | (e.Y >= -1*Band) | (e.Y <= size.Height)
+            return (e.X >= -1 * Band) | (e.X <= size.Width) | (e.Y >= -1 * Band) | (e.Y <= size.Height)
                 ? (e.X < Band
                     ? (e.Y < Band
                         ? EnumMousePointPosition.MouseSizeTopLeft
-                        : (e.Y > -1*Band + size.Height
+                        : (e.Y > -1 * Band + size.Height
                             ? EnumMousePointPosition.MouseSizeBottomLeft
                             : EnumMousePointPosition.MouseSizeLeft))
-                    : (e.X > -1*Band + size.Width
+                    : (e.X > -1 * Band + size.Width
                         ? (e.Y < Band
                             ? EnumMousePointPosition.MouseSizeTopRight
-                            : (e.Y > -1*Band + size.Height
+                            : (e.Y > -1 * Band + size.Height
                                 ? EnumMousePointPosition.MouseSizeBottomRight
                                 : EnumMousePointPosition.MouseSizeRight))
                         : (e.Y < Band
                             ? EnumMousePointPosition.MouseSizeTop
-                            : (e.Y > -1*Band + size.Height
+                            : (e.Y > -1 * Band + size.Height
                                 ? EnumMousePointPosition.MouseSizeBottom
                                 : EnumMousePointPosition.MouseDrag))))
                 : EnumMousePointPosition.MouseSizeNone;

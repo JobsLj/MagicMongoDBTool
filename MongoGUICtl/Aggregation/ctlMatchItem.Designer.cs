@@ -33,54 +33,58 @@ namespace MongoGUICtl.Aggregation
         /// </summary>
         private void InitializeComponent()
         {
-            this.MatchValue = new CtlBsonValue();
-            this.cmbComparisonfunction = new ComboBox();
-            this.cmbField = new ComboBox();
+            this.cmbComparisonfunction = new System.Windows.Forms.ComboBox();
+            this.cmbField = new System.Windows.Forms.ComboBox();
+            this.MatchValue = new MongoGUICtl.ctlBsonValueType();
             this.SuspendLayout();
             // 
-            // ctlBsonValue1
+            // cmbComparisonfunction
             // 
-            this.MatchValue.Location = new Point(281, 3);
-            this.MatchValue.Name = "ctlBsonValue1";
-            this.MatchValue.Size = new Size(211, 28);
-            this.MatchValue.TabIndex = 0;
-            // 
-            // cmbGroupfunction
-            // 
-            this.cmbComparisonfunction.DropDownStyle = ComboBoxStyle.DropDownList;
+            this.cmbComparisonfunction.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbComparisonfunction.FormattingEnabled = true;
-            this.cmbComparisonfunction.Location = new Point(154, 6);
-            this.cmbComparisonfunction.Name = "cmbGroupfunction";
-            this.cmbComparisonfunction.Size = new Size(121, 21);
+            this.cmbComparisonfunction.Location = new System.Drawing.Point(139, 8);
+            this.cmbComparisonfunction.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            this.cmbComparisonfunction.Name = "cmbComparisonfunction";
+            this.cmbComparisonfunction.Size = new System.Drawing.Size(97, 25);
             this.cmbComparisonfunction.TabIndex = 1;
             // 
             // cmbField
             // 
-            this.cmbField.DropDownStyle = ComboBoxStyle.DropDownList;
+            this.cmbField.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbField.FormattingEnabled = true;
-            this.cmbField.Location = new Point(17, 6);
+            this.cmbField.Location = new System.Drawing.Point(20, 8);
+            this.cmbField.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.cmbField.Name = "cmbField";
-            this.cmbField.Size = new Size(121, 21);
+            this.cmbField.Size = new System.Drawing.Size(111, 25);
             this.cmbField.TabIndex = 2;
             // 
-            // ctlMatchItem
+            // MatchValue
             // 
-            this.AutoScaleDimensions = new SizeF(6F, 13F);
-            this.AutoScaleMode = AutoScaleMode.Font;
+            this.MatchValue.Location = new System.Drawing.Point(241, 4);
+            this.MatchValue.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            this.MatchValue.Name = "MatchValue";
+            this.MatchValue.Size = new System.Drawing.Size(383, 38);
+            this.MatchValue.TabIndex = 3;
+            // 
+            // CtlMatchItem
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this.MatchValue);
             this.Controls.Add(this.cmbField);
             this.Controls.Add(this.cmbComparisonfunction);
-            this.Controls.Add(this.MatchValue);
+            this.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "CtlMatchItem";
-            this.Size = new Size(496, 31);
-            this.Load += new EventHandler(this.ctlMatchItem_Load);
+            this.Size = new System.Drawing.Size(628, 36);
+            this.Load += new System.EventHandler(this.ctlMatchItem_Load);
             this.ResumeLayout(false);
 
         }
 
         #endregion
-
-        private CtlBsonValue MatchValue;
         private ComboBox cmbComparisonfunction;
         private ComboBox cmbField;
+        private ctlBsonValueType MatchValue;
     }
 }

@@ -1,19 +1,26 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoUtility.Basic;
 using MongoUtility.Core;
+using MongoUtility.ToolKit;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MongoUtility.Command
 {
     public static partial class Operater
     {
+        /// <summary>
+        ///     初始化副本
+        /// </summary>
+        /// <param name="replSetName"></param>
+        /// <param name="strMessage"></param>
+        /// <returns></returns>
         public static bool InitReplicaSet(string replSetName, ref string strMessage)
         {
-            var result = CommandHelper.InitReplicaSet(replSetName,
-                RuntimeMongoDbContext.GetCurrentServerConfig().ConnectionName,
-                MongoConnectionConfig.MongoConfig.ConnectionList);
+            //注意：这里的replSetName名称只是为了设定本工具用的MongoConfig信息，
+            //实际的replSetName名称应该在启动命令中
+            var result = DataBaseCommand.InitReplicaSet();
             if (result.Ok)
             {
                 //修改配置
@@ -30,22 +37,24 @@ namespace MongoUtility.Command
                 RuntimeMongoDbContext.MongoConnSvrLst.Add(
                     RuntimeMongoDbContext.CurrentMongoConnectionconfig.ConnectionName,
                     RuntimeMongoDbContext.CreateMongoServer(ref newConfig));
+                strMessage = result.Response.ToJson(MongoHelper.JsonWriterSettings);
                 return true;
             }
             strMessage = result.ErrorMessage;
             return false;
         }
 
+ 
         /// <summary>
+        ///     刷新配置文件副本状态
         /// </summary>
         /// <param name="newConfig"></param>
-        public static void ReplicaSet(MongoConnectionConfig newConfig)
+        public static void RefreshConnectionConfig(MongoConnectionConfig newConfig)
         {
             MongoConnectionConfig.MongoConfig.ConnectionList[newConfig.ConnectionName] = newConfig;
             MongoConnectionConfig.MongoConfig.SaveMongoConfig();
             RuntimeMongoDbContext.MongoConnSvrLst.Remove(newConfig.ConnectionName);
-            RuntimeMongoDbContext.MongoConnSvrLst.Add(
-                RuntimeMongoDbContext.CurrentMongoConnectionconfig.ConnectionName,
+            RuntimeMongoDbContext.MongoConnSvrLst.Add(RuntimeMongoDbContext.CurrentMongoConnectionconfig.ConnectionName,
                 RuntimeMongoDbContext.CreateMongoServer(ref newConfig));
         }
 
@@ -68,24 +77,23 @@ namespace MongoUtility.Command
         }
 
         /// <summary>
-        /// </summary>
-        public static void ResyncCommand()
-        {
-            CommandHelper.ExecuteMongoCommand(CommandHelper.ResyncCommand);
-        }
-
-        /// <summary>
+        ///     压缩
         /// </summary>
         public static void Compact()
         {
-            CommandHelper.ExecuteMongoCommand(CommandHelper.CompactCommand);
+            CommandExecute.ExecuteMongoCommand(DataBaseCommand.CompactCommand);
         }
 
+        /// <summary>
+        ///     验证
+        /// </summary>
+        /// <param name="isFull"></param>
+        /// <returns></returns>
         public static BsonDocument Validate(bool isFull)
         {
             BsonDocument result;
             var textSearchOption = new BsonDocument().Add(new BsonElement("full", isFull.ToString()));
-            var searchResult = CommandHelper.ExecuteMongoColCommand("validate",
+            var searchResult = CommandExecute.ExecuteMongoColCommand("validate",
                 RuntimeMongoDbContext.GetCurrentCollection(), textSearchOption);
             result = searchResult.Response;
             return result;

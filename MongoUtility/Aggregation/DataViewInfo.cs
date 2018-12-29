@@ -1,19 +1,11 @@
-﻿/*
- * Created by SharpDevelop.
- * User: scs
- * Date: 2015/1/6
- * Time: 11:09
- * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
- */
-
-using System.Collections.Generic;
-using System.Linq;
+﻿
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoUtility.Basic;
 using MongoUtility.Command;
 using MongoUtility.ToolKit;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MongoUtility.Aggregation
 {
@@ -48,24 +40,19 @@ namespace MongoUtility.Aggregation
         public bool IsReadOnly;
 
         /// <summary>
+        ///     是否为View
+        /// </summary>
+        public bool IsView;
+
+        /// <summary>
         ///     是否为SafeMode
         /// </summary>
         public bool IsSafeMode;
 
         /// <summary>
-        ///     是否使用过滤器
-        /// </summary>
-        public bool IsUseFilter;
-
-        /// <summary>
         ///     每页显示数
         /// </summary>
         public int LimitCnt;
-
-        /// <summary>
-        ///     数据过滤器
-        /// </summary>
-        public DataFilter MDataFilter;
 
         /// <summary>
         ///     查询
@@ -80,7 +67,7 @@ namespace MongoUtility.Aggregation
         /// <summary>
         ///     数据库
         /// </summary>
-        public string StrDbTag;
+        public string strCollectionPath;
 
         /// <summary>
         ///     是否为Admin数据库
@@ -89,9 +76,9 @@ namespace MongoUtility.Aggregation
         {
             get
             {
-                var strNodeData = StrDbTag.Split(":".ToCharArray())[1];
+                var strNodeData = strCollectionPath.Split(":".ToCharArray())[1];
                 var dataList = strNodeData.Split("/".ToCharArray());
-                if (dataList[(int) EnumMgr.PathLevel.Database] == ConstMgr.DatabaseNameAdmin)
+                if (dataList[(int)EnumMgr.PathLevel.Database] == ConstMgr.DatabaseNameAdmin)
                 {
                     return true;
                 }
@@ -106,10 +93,10 @@ namespace MongoUtility.Aggregation
         {
             get
             {
-                var strNodeData = StrDbTag.Split(":".ToCharArray())[1];
+                var strNodeData = strCollectionPath.Split(":".ToCharArray())[1];
                 var dataList = strNodeData.Split("/".ToCharArray());
-                return Operater.IsSystemCollection(dataList[(int) EnumMgr.PathLevel.Database],
-                    dataList[(int) EnumMgr.PathLevel.Collection]);
+                return Operater.IsSystemCollection(dataList[(int)EnumMgr.PathLevel.Database],
+                    dataList[(int)EnumMgr.PathLevel.CollectionAndView]);
             }
         }
 
@@ -120,51 +107,35 @@ namespace MongoUtility.Aggregation
         /// <param name="mServer"></param>
         public static List<BsonDocument> GetDataList(ref DataViewInfo currentDataViewInfo, MongoServer mServer)
         {
-            var collectionPath = currentDataViewInfo.StrDbTag.Split(":".ToCharArray())[1];
-            var cp = collectionPath.Split("/".ToCharArray());
-            MongoCollection mongoCol =
-                mServer.GetDatabase(cp[(int) EnumMgr.PathLevel.Database])
-                    .GetCollection(cp[(int) EnumMgr.PathLevel.Collection]);
-
-
+            var PathArray = currentDataViewInfo.strCollectionPath.Split(":".ToCharArray())[1].Split("/".ToCharArray());
+            MongoCollection mongoCol = mServer.GetDatabase(PathArray[(int)EnumMgr.PathLevel.Database]).GetCollection(PathArray[(int)EnumMgr.PathLevel.CollectionAndView]);
+            //由于Tab页的关系，这里当前数据集并非DataViewInfo的数据集，所以不能写成下面这个样子
+            //var mongoCol = RuntimeMongoDbContext.GetCurrentCollection();
             MongoCursor<BsonDocument> cursor;
-            //Query condition:
-            if (currentDataViewInfo.IsUseFilter)
-            {
-                cursor = mongoCol.FindAs<BsonDocument>(
-                    QueryHelper.GetQuery(currentDataViewInfo.MDataFilter.QueryConditionList))
-                    .SetSkip(currentDataViewInfo.SkipCnt)
-                    .SetFields(QueryHelper.GetOutputFields(currentDataViewInfo.MDataFilter.QueryFieldList))
-                    .SetSortOrder(QueryHelper.GetSort(currentDataViewInfo.MDataFilter.QueryFieldList))
-                    .SetLimit(currentDataViewInfo.LimitCnt);
-            }
-            else
-            {
-                cursor = mongoCol.FindAllAs<BsonDocument>()
-                    .SetSkip(currentDataViewInfo.SkipCnt)
-                    .SetLimit(currentDataViewInfo.LimitCnt);
-            }
+            cursor = mongoCol.FindAllAs<BsonDocument>()
+                .SetSkip(currentDataViewInfo.SkipCnt)
+                .SetLimit(currentDataViewInfo.LimitCnt);
             currentDataViewInfo.Query = cursor.Query != null
                 ? cursor.Query.ToJson(MongoHelper.JsonWriterSettings)
                 : string.Empty;
-            currentDataViewInfo.Explain = cursor.Explain().ToJson(MongoHelper.JsonWriterSettings);
+
+            if (!currentDataViewInfo.IsView)
+            {
+                currentDataViewInfo.Explain = cursor.Explain().ToJson(MongoHelper.JsonWriterSettings);
+            }
+
             var dataList = cursor.ToList();
+
+            //https://jira.mongodb.org/browse/SERVER-26802
+            //在非正常Shutdown的时候，这个统计结果可能出现错误
+            //这个时候需要执行验证数据集命令
             if (currentDataViewInfo.SkipCnt == 0)
             {
-                if (currentDataViewInfo.IsUseFilter)
-                {
-                    //感谢cnblogs.com 网友Shadower
-                    currentDataViewInfo.CurrentCollectionTotalCnt =
-                        (int) mongoCol.Count(QueryHelper.GetQuery(currentDataViewInfo.MDataFilter.QueryConditionList));
-                }
-                else
-                {
-                    currentDataViewInfo.CurrentCollectionTotalCnt = (int) mongoCol.Count();
-                }
+                currentDataViewInfo.CurrentCollectionTotalCnt = (int)mongoCol.Count();
             }
             SetPageEnable(ref currentDataViewInfo);
             return dataList;
-        }
+        }    
 
         /// <summary>
         ///     设置导航状态

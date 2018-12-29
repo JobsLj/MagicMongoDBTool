@@ -10,7 +10,7 @@ using ResourceLib.Method;
 
 namespace FunctionForm.Operation
 {
-    public partial class FrmCopyDataBase : Form
+    public partial class frmCopyDataBase : Form
     {
         #region 变量
 
@@ -21,7 +21,7 @@ namespace FunctionForm.Operation
 
         #endregion
 
-        public FrmCopyDataBase()
+        public frmCopyDataBase()
         {
             InitializeComponent();
         }
@@ -78,7 +78,7 @@ namespace FunctionForm.Operation
                 comboBox.Invoke(new EventsHandlerComboxBind(ComboxBind), comboBox, data);
             else
             {
-                var bs = new BindingSource {DataSource = data};
+                var bs = new BindingSource { DataSource = data };
                 comboBox.DataSource = bs;
                 comboBox.DisplayMember = "Key";
                 comboBox.ValueMember = "Value";
@@ -165,17 +165,16 @@ namespace FunctionForm.Operation
             if (!GuiConfig.IsUseDefaultLanguage)
             {
                 lblSelectServer.Text =
-                    GuiConfig.GetText(TextType.SelectedServer);
+                    GuiConfig.GetText("SelectedServer");
                 lblSelectDataBase.Text =
-                    GuiConfig.GetText(TextType.SelectedDataBase);
-                gbSelectCollections.Text = GuiConfig.GetText(TextType.SelectedCollection);
-                gbSelectDestination.Text = GuiConfig.GetText(TextType.SelectedData);
-                chkCopyIndexes.Text = GuiConfig.GetText(TextType.CopyIndex);
-
-                cmdOK.Text = GuiConfig.GetText(TextType.CommonOk);
-                cmdCancel.Text = GuiConfig.GetText(TextType.CommonCancel);
+                    GuiConfig.GetText("SelectedDataBase");
+                gbSelectCollections.Text = GuiConfig.GetText("SelectedCollection");
+                gbSelectDestination.Text = GuiConfig.GetText("SelectedData");
+                chkCopyIndexes.Text = GuiConfig.GetText("CopyIndex");
+                cmdOK.Text = GuiConfig.GetText("Common.Ok");
+                cmdCancel.Text = GuiConfig.GetText("Common.Cancel");
             }
-            new Thread(DataBind) {IsBackground = true}.Start();
+            new Thread(DataBind) { IsBackground = true }.Start();
         }
 
         /// <summary>
@@ -266,7 +265,7 @@ namespace FunctionForm.Operation
             var db = server.GetDatabase(comboBoxDataBase.Text);
             if (db == null) return;
             ThreadStart ts = () => Copy(db);
-            new Thread(ts) {IsBackground = true}.Start();
+            new Thread(ts) { IsBackground = true }.Start();
         }
 
         #endregion

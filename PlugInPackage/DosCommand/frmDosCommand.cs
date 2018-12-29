@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Common;
+using MongoUtility.ToolKit;
+using ResourceLib.Method;
+using System;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
-using Common;
-using MongoUtility.ToolKit;
-using ResourceLib.Method;
 
 namespace PlugInPackage.DosCommand
 {
@@ -23,14 +23,7 @@ namespace PlugInPackage.DosCommand
             ctlMongodPanel.CommandChanged += (x, y) => CommandChanged(y.NewString);
             ctlMongodumpPanel.CommandChanged += (x, y) => CommandChanged(y.NewString);
             ctlMongoImportExportPanel.CommandChanged += (x, y) => CommandChanged(y.NewString);
-            if (GuiConfig.IsUseDefaultLanguage)
-                return;
-            cmdSave.Text = GuiConfig.GetText(TextType.CommonSave);
-            cmdRunDos.Text = GuiConfig.GetText(TextType.DosCommandRun);
-            tabMongod.Text = GuiConfig.GetText(TextType.DosCommandTabDeploy);
-            tabMongoDump.Text = GuiConfig.GetText(TextType.DosCommandTabBackup);
-            tabMongoImportExport.Text =
-                GuiConfig.GetText(TextType.DosCommandTabExIn);
+            GuiConfig.Translateform(this);
         }
 
         /// <summary>

@@ -1,22 +1,76 @@
-﻿/*
- * Created by SharpDevelop.
- * User: scs
- * Date: 2015/1/9
- * Time: 13:48
- * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
- */
-
+﻿using PlugInPrj;
+using ResourceLib.Method;
+using ResourceLib.Properties;
+using ResourceLib.UI;
 using System.Windows.Forms;
-using PlugInPackage;
 
 namespace MongoCola
 {
     /// <summary>
     ///     Description of frmMain_Helper.
     /// </summary>
-    public partial class FrmMain : Form
+    public partial class frmMain : Form
     {
+
+        /// <summary>
+        ///     设置图标
+        /// </summary>
+        private void SetMenuImage()
+        {
+            ExitToolStripMenuItem.Image = Resources.exit.ToBitmap();
+            ExpandAllConnectionToolStripMenuItem.Image = GetResource.GetImage(ImageType.Expand);
+            CollapseAllConnectionToolStripMenuItem.Image = GetResource.GetImage(ImageType.Collpse);
+            DelMongoCollectionToolStripMenuItem.Image = GetResource.GetIcon(IconType.No).ToBitmap();
+            DelMongoDBToolStripMenuItem.Image = GetResource.GetIcon(IconType.No).ToBitmap();
+
+            RefreshToolStripMenuItem.Image = GetResource.GetImage(ImageType.Refresh);
+            OptionsToolStripMenuItem.Image = GetResource.GetImage(ImageType.Option);
+
+            ThanksToolStripMenuItem.Image = GetResource.GetImage(ImageType.Smile);
+            UserGuideToolStripMenuItem.Image = GetResource.GetIcon(IconType.UserGuide).ToBitmap();
+        }
+
+        /// <summary>
+        ///     初始化Toolbar
+        /// </summary>
+        private void InitToolBar()
+        {
+            ExpandAllConnectionToolStripButton = ExpandAllConnectionToolStripMenuItem.CloneFromMenuItem();
+            CollapseAllConnectionToolStripButton = CollapseAllConnectionToolStripMenuItem.CloneFromMenuItem();
+            RefreshToolStripButton = RefreshToolStripMenuItem.CloneFromMenuItem();
+            ExitToolStripButton = ExitToolStripMenuItem.CloneFromMenuItem();
+            OptionToolStripButton = OptionsToolStripMenuItem.CloneFromMenuItem();
+            UserGuideToolStripButton = UserGuideToolStripMenuItem.CloneFromMenuItem();
+
+            if (SystemManager.MonoMode)
+            {
+                ExpandAllConnectionToolStripButton.Click += ExpandAllToolStripMenuItem_Click;
+                CollapseAllConnectionToolStripButton.Click += CollapseAllToolStripMenuItem_Click;
+                RefreshToolStripButton.Click += RefreshToolStripMenuItem_Click;
+                ExitToolStripButton.Click += ExitToolStripMenuItem_Click;
+                OptionToolStripButton.Click += OptionToolStripMenuItem_Click;
+                UserGuideToolStripButton.Click += userGuideToolStripMenuItem_Click;
+            }
+            //Main ToolTip
+            toolStripMain.Items.Add(ExpandAllConnectionToolStripButton);
+            toolStripMain.Items.Add(CollapseAllConnectionToolStripButton);
+            toolStripMain.Items.Add(RefreshToolStripButton);
+            toolStripMain.Items.Add(ExitToolStripButton);
+            toolStripMain.Items.Add(new ToolStripSeparator());
+            toolStripMain.Items.Add(OptionToolStripButton);
+            toolStripMain.Items.Add(UserGuideToolStripButton);
+        }
+
+        /// <summary>
+        ///     设定工具栏
+        /// </summary>
+        private void SetToolBarEnabled()
+        {
+            UserGuideToolStripButton.Enabled = true;
+            RefreshToolStripButton.Enabled = true;
+            OptionToolStripButton.Enabled = true;
+        }
+
         /// <summary>
         ///     禁止所有操作
         /// </summary>
@@ -25,26 +79,26 @@ namespace MongoCola
             //管理-服务器
             CreateMongoDBToolStripMenuItem.Enabled = false;
             AddUserToAdminToolStripMenuItem.Enabled = false;
+            AddAdminCustomeRoleStripMenuItem.Enabled = false;
             ServerStatusToolStripMenuItem.Enabled = false;
-            ServePropertyToolStripMenuItem.Enabled = false;
-            slaveResyncToolStripMenuItem.Enabled = false;
-            //ShutDownToolStripMenuItem.Enabled = false;
-            //ShutDownToolStripButton.Enabled = false;
             InitReplsetToolStripMenuItem.Enabled = false;
             ReplicaSetToolStripMenuItem.Enabled = false;
             ShardingConfigToolStripMenuItem.Enabled = false;
             DisconnectToolStripMenuItem.Enabled = false;
+            ServerMonitorToolStripMenuItem.Enabled = false;
 
             //管理-数据库
             CreateMongoCollectionToolStripMenuItem.Enabled = false;
+            CreateViewtoolStripMenuItem.Enabled = false;
             CopyDatabasetoolStripMenuItem.Enabled = false;
             DelMongoDBToolStripMenuItem.Enabled = false;
-            UserInfoStripMenuItem.Enabled = false;
             AddUserToolStripMenuItem.Enabled = false;
+            AddDBCustomeRoleStripMenuItem.Enabled = false;
             EvalJSToolStripMenuItem.Enabled = false;
             RepairDBToolStripMenuItem.Enabled = false;
             InitGFSToolStripMenuItem.Enabled = false;
             DBStatusToolStripMenuItem.Enabled = false;
+            ProfillingLevelToolStripMenuItem.Enabled = false;
 
             //管理-数据集
             IndexManageToolStripMenuItem.Enabled = false;
@@ -59,8 +113,7 @@ namespace MongoCola
             CollectionStatusToolStripMenuItem.Enabled = false;
             ValidateToolStripMenuItem.Enabled = false;
             ExportToFileToolStripMenuItem.Enabled = false;
-            ProfillingLevelToolStripMenuItem.Enabled = false;
-            machineLearningToolStripMenuItem.Enabled = false;
+            ConvertToCappedtoolStripMenuItem.Enabled = false;
 
             //管理-备份和恢复
             DumpDatabaseToolStripMenuItem.Enabled = false;

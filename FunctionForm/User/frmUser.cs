@@ -1,14 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Windows.Forms;
-using Common;
+﻿using Common;
+using FunctionForm.Operation;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using MongoDB.Driver.Builders;
 using MongoUtility.Basic;
 using MongoUtility.Core;
+using MongoUtility.Security;
 using ResourceLib.Method;
 using ResourceLib.Properties;
 using ResourceLib.UI;
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace FunctionForm.User
 {
@@ -17,10 +20,11 @@ namespace FunctionForm.User
         /// <summary>
         ///     是否作为Admin
         /// </summary>
-        private readonly bool _isAdmin;
-
-        private readonly string _modifyName = string.Empty;
-        private readonly Dictionary<string, BsonElement> _otherDbRolesDict = new Dictionary<string, BsonElement>();
+        private bool _isAdmin;
+        /// <summary>
+        ///     修改用户名
+        /// </summary>
+        private string _modifyName = string.Empty;
 
         /// <summary>
         ///     frmUser
@@ -30,16 +34,6 @@ namespace FunctionForm.User
         {
             InitializeComponent();
             _isAdmin = isAdmin;
-            foreach (var item in RuntimeMongoDbContext.GetCurrentServer().GetDatabaseNames())
-            {
-                cmbDB.Items.Add(item);
-            }
-            if (!isAdmin)
-            {
-                //Admin以外的不能有otherDBRoles
-                Width = Width/2;
-            }
-            userRoles.IsAdmin = isAdmin;
         }
 
         /// <summary>
@@ -52,16 +46,113 @@ namespace FunctionForm.User
             InitializeComponent();
             _isAdmin = isAdmin;
             _modifyName = userName;
-            cmbDB.Items.Clear();
-            foreach (var item in RuntimeMongoDbContext.GetCurrentServer().GetDatabaseNames())
+        }
+
+        /// <summary>
+        ///     Load
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void frmUser_Load(object sender, EventArgs e)
+        {
+            if (_modifyName != string.Empty)
             {
-                cmbDB.Items.Add(item);
+                Text = "Change User Config";
+                txtUserName.Enabled = false;
+                txtUserName.Text = _modifyName;
+                var userInfo = RuntimeMongoDbContext.GetCurrentDataBase().GetCollection(ConstMgr.CollectionNameUsers)
+                    .FindOneAs<BsonDocument>(Query.EQ("user", _modifyName));
+
+                if (userInfo.TryGetElement("roles", out BsonElement role))
+                {
+                    var roles = role.Value.AsBsonArray;
+                    foreach (var _role in roles)
+                    {
+                        if (_role.IsBsonDocument)
+                        {
+                            _roleList.Add(new Role.GrantRole()
+                            {
+                                Role = _role.AsBsonDocument.GetElement("role").Value.ToString(),
+                                Db = _role.AsBsonDocument.GetElement("db").Value.ToString()
+                            });
+                        }
+                        else
+                        {
+                            _roleList.Add(new Role.GrantRole()
+                            {
+                                Role = _role.ToString(),
+                            });
+                        }
+                    }
+                }
+                RefreshRoles();
+
+                if (userInfo.TryGetElement("customData", out BsonElement custom))
+                {
+                    customData = custom.Value.AsBsonDocument;
+                    lblcustomDocument.Text = "Custom Document:" + customData.ToString();
+                }
+
             }
-            if (!isAdmin)
+
+            GuiConfig.Translateform(this);
+
+            if (!GuiConfig.IsUseDefaultLanguage)
             {
-                //Admin以外的不能有otherDBRoles
-                Width = Width/2;
+                if (_modifyName == string.Empty)
+                {
+                    if (!GuiConfig.IsMono) Icon = GetSystemIcon.ConvertImgToIcon(Resources.AddUserToDB);
+                    Text = GuiConfig.GetText(_isAdmin ? "MainMenu.OperationServerAddUserToAdmin" : "MainMenu.OperationDatabaseAddUser");
+                }
+                else
+                {
+                    if (!GuiConfig.IsMono) Icon = GetSystemIcon.ConvertImgToIcon(Resources.DBkey);
+                    Text = GuiConfig.GetText("CommonChangePassword");
+                }
             }
+        }
+
+        /// <summary>
+        ///     角色
+        /// </summary>
+        private List<Role.GrantRole> _roleList = new List<Role.GrantRole>();
+
+        /// <summary>
+        ///     选择角色
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnPickRole_Click(object sender, EventArgs e)
+        {
+            var mUserRole = new FrmUserRole(_roleList, _isAdmin);
+            mUserRole.ShowDialog();
+            _roleList = mUserRole.PickedRoles;
+            RefreshRoles();
+        }
+
+        private void RefreshRoles()
+        {
+            lstRoles.Items.Clear();
+            foreach (var role in _roleList)
+            {
+                var lst = new ListViewItem(role.Role);
+                lst.SubItems.Add(role.Db);
+                lstRoles.Items.Add(lst);
+            }
+        }
+
+        /// <summary>
+        ///     用户信息
+        /// </summary>
+        BsonDocument customData = null;
+
+        private void btnPickDoc_Click(object sender, EventArgs e)
+        {
+            var frmInsertDoc = new frmCreateDocument();
+            UIAssistant.OpenModalForm(frmInsertDoc, false, true);
+            if (frmInsertDoc.mBsonDocument == null) return;
+            customData = frmInsertDoc.mBsonDocument;
+            lblcustomDocument.Text = "Custom Document:" + customData.ToString();
         }
 
         /// <summary>
@@ -77,30 +168,30 @@ namespace FunctionForm.User
                 return;
             }
             //MongoUser不能同时具备Password和userSource字段！
-            var user = new MongoUtility.Security.User
+            var user = new MongoUserEx
             {
                 Username = txtUserName.Text,
                 Password = txtUserName.Text,
-                Roles = userRoles.GetRoles()
+                Roles = _roleList,
+                customData = customData
             };
-            var otherDbRoles = new BsonDocument();
-            foreach (var item in _otherDbRolesDict.Values)
-            {
-                otherDbRoles.Add(item);
-            }
-            user.OtherDbRoles = otherDbRoles;
-            user.UserSource = txtuserSource.Text;
             if (txtUserName.Text == string.Empty)
             {
                 MyMessageBox.ShowMessage("Error", "Please fill username!");
                 return;
             }
-            //2013/08/13 用户结构发生大的变化
-            //取消了ReadOnly字段，添加了Roles等字段
-            //简化逻辑，不论新建还是修改，AddUser都可以
             try
             {
-                MongoUtility.Security.User.AddUserToSystem(user, _isAdmin);
+                CommandResult result = null;
+                if (txtUserName.Enabled)
+                {
+                    result = MongoUserEx.AddUser(user, _isAdmin);
+                }
+                else
+                {
+                    result = MongoUserEx.UpdateUser(user, _isAdmin);
+                }
+                MyMessageBox.ShowMessage("Result:", result.Response.ToString());
             }
             catch (Exception ex)
             {
@@ -108,7 +199,6 @@ namespace FunctionForm.User
             }
             Close();
         }
-
         /// <summary>
         ///     关闭
         /// </summary>
@@ -117,130 +207,6 @@ namespace FunctionForm.User
         private void cmdCancel_Click(object sender, EventArgs e)
         {
             Close();
-        }
-
-        private void frmUser_Load(object sender, EventArgs e)
-        {
-            if (_modifyName != string.Empty)
-            {
-                Text = "Change User Config";
-                txtUserName.Enabled = false;
-                txtUserName.Text = _modifyName;
-                var userInfo = RuntimeMongoDbContext.GetCurrentDataBase().GetCollection(ConstMgr.CollectionNameUser)
-                    .FindOneAs<BsonDocument>(Query.EQ("user", _modifyName));
-                userRoles.SetRoles(userInfo["roles"].AsBsonArray);
-                _otherDbRolesDict.Clear();
-                foreach (var item in userInfo["otherDBRoles"].AsBsonDocument)
-                {
-                    _otherDbRolesDict.Add(item.Name, item);
-                }
-                RefreshOtherDbRoles();
-            }
-            if (!GuiConfig.IsUseDefaultLanguage)
-            {
-                if (_modifyName == string.Empty)
-                {
-                    Text = GuiConfig.GetText(_isAdmin
-                        ? TextType.MainMenuOperationServerAddUserToAdmin
-                        : TextType.MainMenuOperationDatabaseAddUser);
-                    if (!GuiConfig.IsMono) Icon = GetSystemIcon.ConvertImgToIcon(Resources.AddUserToDB);
-                }
-                else
-                {
-                    if (!GuiConfig.IsMono) Icon = GetSystemIcon.ConvertImgToIcon(Resources.DBkey);
-                    Text = GuiConfig.GetText(TextType.CommonChangePassword);
-                }
-                lblUserName.Text =
-                    GuiConfig.GetText(TextType.CommonUsername);
-                lblPassword.Text =
-                    GuiConfig.GetText(TextType.CommonPassword);
-                lblConfirmPsw.Text =
-                    GuiConfig.GetText(TextType.CommonConfirmPassword);
-                //chkReadOnly.Text = GUIConfig.GetText(MongoCola.Module.ResourceLib.MongoHelper.TextType.Common_ReadOnly);
-                colRoles.Text = GuiConfig.GetText(TextType.CommonRoles);
-                colDataBase.Text =
-                    GuiConfig.GetText(TextType.CommonDataBase);
-                cmdOK.Text = GuiConfig.GetText(TextType.CommonOk);
-                cmdCancel.Text = GuiConfig.GetText(TextType.CommonCancel);
-            }
-        }
-
-        /// <summary>
-        ///     刷新角色
-        /// </summary>
-        private void RefreshOtherDbRoles()
-        {
-            lstOtherRoles.Items.Clear();
-            foreach (var item in _otherDbRolesDict.Keys)
-            {
-                lstOtherRoles.Items.Add(new ListViewItem(new[] {item, _otherDbRolesDict[item].Value.ToString()}));
-            }
-        }
-
-        /// <summary>
-        ///     增加角色
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void cmdAddRole_Click(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(cmbDB.Text))
-            {
-                MyMessageBox.ShowMessage("Error", "Please Select A Database");
-                return;
-            }
-            var mUserRole = new FrmUserRole(new BsonArray());
-            mUserRole.ShowDialog();
-            var otherRole = new BsonElement(cmbDB.Text, mUserRole.Result);
-            if (_otherDbRolesDict.ContainsKey(cmbDB.Text))
-            {
-                _otherDbRolesDict[cmbDB.Text] = otherRole;
-            }
-            else
-            {
-                _otherDbRolesDict.Add(cmbDB.Text, otherRole);
-            }
-            RefreshOtherDbRoles();
-        }
-
-        /// <summary>
-        ///     删除角色
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void cmdDelRole_Click(object sender, EventArgs e)
-        {
-            if (lstOtherRoles.SelectedItems.Count == 0)
-            {
-                MyMessageBox.ShowMessage("Error", "Please Select A Database");
-            }
-            else
-            {
-                _otherDbRolesDict.Remove(lstOtherRoles.SelectedItems[0].Text);
-                RefreshOtherDbRoles();
-            }
-        }
-
-        /// <summary>
-        ///     修改角色
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void cmdModifyRole_Click(object sender, EventArgs e)
-        {
-            if (lstOtherRoles.SelectedItems.Count == 0)
-            {
-                MyMessageBox.ShowMessage("Error", "Please Select A Database");
-            }
-            else
-            {
-                var dbName = lstOtherRoles.SelectedItems[0].Text;
-                var mUserRole = new FrmUserRole(_otherDbRolesDict[dbName].Value.AsBsonArray);
-                mUserRole.ShowDialog();
-                var otherRole = new BsonElement(cmbDB.Text, mUserRole.Result);
-                _otherDbRolesDict[dbName] = otherRole;
-                RefreshOtherDbRoles();
-            }
         }
     }
 }

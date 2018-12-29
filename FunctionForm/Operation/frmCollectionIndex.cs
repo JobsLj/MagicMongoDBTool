@@ -11,11 +11,11 @@ using ResourceLib.UI;
 
 namespace FunctionForm.Operation
 {
-    public partial class FrmCollectionIndex : Form
+    public partial class frmCollectionIndex : Form
     {
         /// <summary>
         /// </summary>
-        public FrmCollectionIndex()
+        public frmCollectionIndex()
         {
             InitializeComponent();
         }
@@ -28,15 +28,15 @@ namespace FunctionForm.Operation
         private void frmCollectionIndex_Load(object sender, EventArgs e)
         {
             GuiConfig.Translateform(this);
-            lstIndex.Columns.Add(GuiConfig.GetText("Name", TextType.IndexName));
-            lstIndex.Columns.Add(GuiConfig.GetText("Version", TextType.IndexVersion));
-            lstIndex.Columns.Add(GuiConfig.GetText("IndexKey", TextType.IndexKeys));
-            lstIndex.Columns.Add(GuiConfig.GetText("NameSpace", TextType.IndexNameSpace));
-            lstIndex.Columns.Add(GuiConfig.GetText("BackGround", TextType.IndexBackground));
-            lstIndex.Columns.Add(GuiConfig.GetText("Sparse", TextType.IndexSparse));
-            lstIndex.Columns.Add(GuiConfig.GetText("Unify", TextType.IndexUnify));
-            lstIndex.Columns.Add(GuiConfig.GetText("DroppedDups", TextType.IndexRepeatDel));
-            lstIndex.Columns.Add(GuiConfig.GetText("Expire Data", TextType.IndexExpireData));
+            lstIndex.Columns.Add(GuiConfig.GetText("Name", "Index.Name"));
+            lstIndex.Columns.Add(GuiConfig.GetText("Version", "Index.Version"));
+            lstIndex.Columns.Add(GuiConfig.GetText("IndexKey", "Index.Keys"));
+            lstIndex.Columns.Add(GuiConfig.GetText("NameSpace", "Index.NameSpace"));
+            lstIndex.Columns.Add(GuiConfig.GetText("BackGround", "Index.Background"));
+            lstIndex.Columns.Add(GuiConfig.GetText("Sparse", "Index.Sparse"));
+            lstIndex.Columns.Add(GuiConfig.GetText("Unify", "Index.Unify"));
+            lstIndex.Columns.Add(GuiConfig.GetText("DroppedDups", "Index.RepeatDel"));
+            lstIndex.Columns.Add(GuiConfig.GetText("Expire Data", "Index.ExpireData"));
             //2.2.2 开始支持TTL索引
             if (RuntimeMongoDbContext.GetCurrentServer().BuildInfo.Version < new Version(2, 2, 2, 0))
             {
@@ -73,36 +73,44 @@ namespace FunctionForm.Operation
         /// <param name="e"></param>
         private void cmdAddIndex_Click(object sender, EventArgs e)
         {
-            var ascendingKey = new List<string>();
-            var descendingKey = new List<string>();
-            var geoSpatialKey = string.Empty;
+            //Index UIOption
+            var uiOption = new Operater.IndexOption()
+            {
+                AscendingKey = new List<string>(),
+                DescendingKey = new List<string>(),
+                TextKey = new List<string>()
+            };
             var firstKey = string.Empty;
-            var textKey = string.Empty;
             for (var i = 0; i < 5; i++)
             {
-                var ctl = (CtlIndexCreate) Controls.Find("ctlIndexCreate" + (i + 1), true)[0];
+                var ctl = (CtlIndexCreate)Controls.Find("ctlIndexCreate" + (i + 1), true)[0];
                 if (ctl.KeyName == string.Empty) continue;
                 firstKey = ctl.KeyName.Trim();
                 switch (ctl.IndexKeyType)
                 {
-                    case EnumMgr.IndexType.Ascending:
-                        ascendingKey.Add(ctl.KeyName.Trim());
+                    case EnumMgr.IndexType.GeoSpatialHaystack:
+                        uiOption.GeoSpatialHaystackKey = ctl.KeyName.Trim();
                         break;
-                    case EnumMgr.IndexType.Descending:
-                        descendingKey.Add(ctl.KeyName.Trim());
+                    case EnumMgr.IndexType.GeoSpatialSpherical:
+                        uiOption.GeoSpatialSphericalKey = ctl.KeyName.Trim();
                         break;
                     case EnumMgr.IndexType.GeoSpatial:
-                        geoSpatialKey = ctl.KeyName.Trim();
+                        uiOption.GeoSpatialKey = ctl.KeyName.Trim();
+                        break;
+                    case EnumMgr.IndexType.Ascending:
+                        uiOption.AscendingKey.Add(ctl.KeyName.Trim());
+                        break;
+                    case EnumMgr.IndexType.Descending:
+                        uiOption.DescendingKey.Add(ctl.KeyName.Trim());
                         break;
                     case EnumMgr.IndexType.Text:
-                        textKey = ctl.KeyName.Trim();
+                        uiOption.TextKey.Add(ctl.KeyName.Trim());
                         break;
-                    default:
+                    case EnumMgr.IndexType.Hashed:
+                        uiOption.HashedKey = ctl.KeyName.Trim();
                         break;
                 }
             }
-            //Index UIOption
-            var uiOption = new Operater.IndexOption();
             uiOption.IsBackground = chkIsBackground.Checked;
             uiOption.IsDropDups = chkIsDroppedDups.Checked;
             uiOption.IsSparse = chkIsSparse.Checked;
@@ -110,14 +118,10 @@ namespace FunctionForm.Operation
             uiOption.IsExpireData = chkExpireData.Checked;
             //Partial Indexes
             uiOption.IsPartial = chkPartialIndexes.Checked;
-            uiOption.Ttl = (int) numTTL.Value;
-            uiOption.AscendingKey = ascendingKey;
-            uiOption.DescendingKey = descendingKey;
-            uiOption.GeoSpatialKey = geoSpatialKey;
+            uiOption.Ttl = (int)numTTL.Value;
             uiOption.FirstKey = firstKey;
-            uiOption.TextKey = textKey;
             uiOption.IndexName = txtIndexName.Text;
-            //Partial Indexes
+            //Partial Condition
             uiOption.PartialCondition = txtPartialIndexes.Text;
             var strMessageTitle = string.Empty;
             var strMessageContent = string.Empty;
@@ -125,7 +129,7 @@ namespace FunctionForm.Operation
             {
                 RefreshList();
             }
-            MyMessageBox.ShowEasyMessage(strMessageTitle, strMessageContent);
+            MyMessageBox.ShowMessage(strMessageTitle, strMessageContent);
         }
 
         /// <summary>

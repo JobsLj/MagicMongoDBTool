@@ -18,31 +18,6 @@ namespace PlugInPackage.DosCommand
         public CtlMongod()
         {
             InitializeComponent();
-            ctlFilePickerLogPath.FileFilter = Utility.LogFilter;
-            if (!GuiConfig.IsUseDefaultLanguage)
-            {
-                lblPort.Text = GuiConfig.GetText(TextType.CommonPort);
-                lblSource.Text =
-                    GuiConfig.GetText(
-                        TextType.DosCommandTabDeploySlaveSource);
-                chkAuth.Text =
-                    GuiConfig.GetText(
-                        TextType.DosCommandTabDeployAuthentication);
-                chkIsAppend.Text =
-                    GuiConfig.GetText(
-                        TextType.DosCommandTabDeployAppendMode);
-                ctlFilePickerDBPath.Title =
-                    GuiConfig.GetText(TextType.DosCommandTabDeployDbPath);
-                ctlFilePickerLogPath.Title =
-                    GuiConfig.GetText(
-                        TextType.DosCommandTabDeployLogPath);
-                radMaster.Text =
-                    GuiConfig.GetText(TextType.DosCommandTabDeployMaster);
-                radSlave.Text =
-                    GuiConfig.GetText(TextType.DosCommandTabDeploySlave);
-                grpLog.Text =
-                    GuiConfig.GetText(TextType.DosCommandTabDeployLog);
-            }
         }
 
         /// <summary>
@@ -52,9 +27,12 @@ namespace PlugInPackage.DosCommand
         /// <param name="e"></param>
         private void ctlMongod_Load(object sender, EventArgs e)
         {
+            ctlFilePickerLogPath.FileFilter = Utility.LogFilter;
             ctllogLvT.LoglvChanged += ctllogLvT_LoglvChanged;
             ctlFilePickerLogPath.PathChanged += ctlFilePickerT_PathChanged;
             ctlFilePickerDBPath.PathChanged += ctlFilePickerDBPath_PathChanged;
+            if (DesignMode) return;
+            GuiConfig.Translateform(Controls);
         }
 
         protected virtual void OnCommandChange(TextChangeEventArgs e)
@@ -148,10 +126,6 @@ namespace PlugInPackage.DosCommand
                 OnCommandChange(new TextChangeEventArgs(string.Empty,
                     MongodbDosCommand.GetMongodCommandLine(MongodCommand)));
             }
-        }
-
-        private void grpLog_Enter(object sender, EventArgs e)
-        {
         }
     }
 }

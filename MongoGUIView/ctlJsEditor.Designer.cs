@@ -75,7 +75,7 @@ namespace MongoGUIView
             this.EditDocStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.EditDocStripButton.Name = "EditDocStripButton";
             this.EditDocStripButton.Size = new System.Drawing.Size(23, 22);
-            this.EditDocStripButton.Tag = "Common_Edit";
+            this.EditDocStripButton.Tag = "Common.Edit";
             this.EditDocStripButton.Text = "Editor";
             this.EditDocStripButton.Click += new System.EventHandler(this.EditDocStripButton_Click);
             // 
@@ -86,7 +86,7 @@ namespace MongoGUIView
             this.SaveStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.SaveStripButton.Name = "SaveStripButton";
             this.SaveStripButton.Size = new System.Drawing.Size(23, 22);
-            this.SaveStripButton.Tag = "Common_Save";
+            this.SaveStripButton.Tag = "Common.Save";
             this.SaveStripButton.Text = "Save";
             this.SaveStripButton.Click += new System.EventHandler(this.SaveStripButton_Click);
             // 
@@ -97,7 +97,7 @@ namespace MongoGUIView
             this.CloseStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.CloseStripButton.Name = "CloseStripButton";
             this.CloseStripButton.Size = new System.Drawing.Size(23, 22);
-            this.CloseStripButton.Tag = "Common_Close";
+            this.CloseStripButton.Tag = "Common.Close";
             this.CloseStripButton.Text = "Close";
             this.CloseStripButton.Click += new System.EventHandler(this.CloseStripButton_Click);
             // 
@@ -121,7 +121,6 @@ namespace MongoGUIView
             this.txtEvalJavaScript.Size = new System.Drawing.Size(690, 61);
             this.txtEvalJavaScript.TabIndex = 3;
             this.txtEvalJavaScript.Text = "";
-            this.txtEvalJavaScript.Document.HighlightingStrategy = HighlightingStrategyFactory.CreateHighlightingStrategy("c#");
             this.txtEvalJavaScript.Encoding = System.Text.Encoding.Default;
             // 
             // panel1
@@ -227,7 +226,6 @@ namespace MongoGUIView
             this.txtEditJavaScript.Size = new System.Drawing.Size(690, 165);
             this.txtEditJavaScript.TabIndex = 0;
             this.txtEditJavaScript.KeyDown += new System.Windows.Forms.KeyEventHandler(this.CtlJsEditor_KeyDown);
-            this.txtEditJavaScript.Document.HighlightingStrategy = HighlightingStrategyFactory.CreateHighlightingStrategy("C#");
             this.txtEditJavaScript.Encoding = System.Text.Encoding.Default;
             // 
             // CtlJsEditor

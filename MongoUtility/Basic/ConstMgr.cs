@@ -55,9 +55,14 @@
         public const string CollectionTag = "MongoCollection";
 
         /// <summary>
-        ///     数据集
+        ///     数据集列表
         /// </summary>
         public const string CollectionListTag = "MongoCollectionList";
+
+        /// <summary>
+        ///     视图列表
+        /// </summary>
+        public const string ViewListTag = "MongoViewList";
 
         /// <summary>
         ///     数据集
@@ -65,9 +70,14 @@
         public const string SystemCollectionListTag = "MongoSystemCollectionList";
 
         /// <summary>
-        ///     BSonDoc
+        ///     文档
         /// </summary>
         public const string DocumentTag = "MongoDocument";
+
+        /// <summary>
+        ///     视图
+        /// </summary>
+        public const string ViewTag = "MongoView";
 
         /// <summary>
         ///     JavaScript
@@ -88,6 +98,11 @@
         ///     用户列表
         /// </summary>
         public const string UserListTag = "MongoUserList";
+
+        /// <summary>
+        ///     角色列表
+        /// </summary>
+        public const string RoleListTag = "MongoRoleList";
 
         /// <summary>
         ///     用户
@@ -123,11 +138,17 @@
         ///     Default Port(Mongod)
         /// </summary>
         public const int MongodDefaultPort = 27017;
-
+        /// <summary>
+        ///     Web Mongod Default Port
+        /// </summary>
         public const int WebMongodDefaultPort = 28017;
-
+        /// <summary>
+        ///     Shard Default Port
+        /// </summary>
         public const int ShardDefaultPort = 27018;
-
+        /// <summary>
+        ///     Config Default Port
+        /// </summary>
         public const int ConfigDefaultPort = 27019;
 
         /// <summary>
@@ -165,9 +186,40 @@
         public const string CollectionNameSystemProfile = "system.profile";
 
         /// <summary>
+        ///     用户数据集名称
+        /// </summary>
+        public const string CollectionNameUsers = "system.users";
+
+        /// <summary>
+        ///     角色数据集名称
+        /// </summary>
+        public const string CollectionNameRoles = "system.roles";
+
+        /// <summary>
+        ///     Js数据集名称
+        /// </summary>
+        public const string CollectionNameJavascript = "system.js";
+
+        /// <summary>
+        ///     视图数据集名称
+        /// </summary>
+        public const string CollectionNameSystemViews = "system.views";
+
+        /// <summary>
+        ///     版本数据集名称
+        /// </summary>
+        public const string CollectionNameVersion = "system.version";
+
+
+        /// <summary>
         ///     minvalid数据集名称
         /// </summary>
         public const string CollectionNameReplsetMinvalid = "replset.minvalid";
+
+        /// <summary>
+        ///     election数据集名称
+        /// </summary>
+        public const string CollectionNameReplsetElection = "replset.election";
 
         /// <summary>
         ///     操作日志数据集名称
@@ -184,24 +236,11 @@
         /// </summary>
         public const string CollectionNameGfsFiles = "fs.files";
 
-        /// <summary>
-        ///     用户数据集名称
-        /// </summary>
-        public const string CollectionNameUser = "system.users";
-
-        /// <summary>
-        ///     角色数据集名称
-        /// </summary>
-        public const string CollectionNameRole = "system.roles";
-
-        /// <summary>
-        ///     Js数据集名称
-        /// </summary>
-        public const string CollectionNameJavascript = "system.js";
-
         #endregion
 
         #region"其他"
+
+        public const string CSharp = "C#";
 
         /// <summary>
         ///     查询条件构成控件用常量
@@ -227,9 +266,30 @@
         #endregion
 
         #region authentication mechanisms
+
+        /// <summary>
+        ///     SCRAM_SHA_1
+        /// </summary>
         public const string SCRAM_SHA_1 = "SCRAM-SHA-1";
+        /// <summary>
+        ///     MONGODB_CR
+        /// </summary>
         public const string MONGODB_CR = "MONGODB-CR";
+        /// <summary>
+        ///     MONGODB_X509
+        /// </summary>
         public const string MONGODB_X509 = "MONGODB-X509";
+
+        /// <summary>
+        ///     LDAP
+        /// </summary>
+        public const string LDAP = "LDAP";
+
+        /// <summary>
+        ///     Kerberos
+        /// </summary>
+        public const string Kerberos = "Kerberos";
+
         #endregion
     }
 }

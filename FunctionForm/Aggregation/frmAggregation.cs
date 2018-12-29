@@ -1,15 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Windows.Forms;
-using Common;
-using FunctionForm.Operation;
+﻿using Common;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using MongoGUICtl.ClientTree;
 using MongoUtility.Command;
 using MongoUtility.Core;
 using MongoUtility.ToolKit;
 using ResourceLib.UI;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Windows.Forms;
 
 namespace FunctionForm.Aggregation
 {
@@ -34,7 +35,7 @@ namespace FunctionForm.Aggregation
         {
             if (stages.Count <= 0)
                 return;
-            var mCommandResult = CommandHelper.Aggregate(stages, RuntimeMongoDbContext.GetCurrentCollection().Name);
+            var mCommandResult = DataBaseCommand.Aggregate(stages, RuntimeMongoDbContext.GetCurrentCollection().Name);
             if (mCommandResult.Ok)
             {
                 trvResult.DatatreeView.BeginUpdate();
@@ -79,7 +80,7 @@ namespace FunctionForm.Aggregation
             try
             {
                 var frmAddStage = new FrmAddStage();
-                Utility.OpenForm(frmAddStage, false, true);
+                UIAssistant.OpenModalForm(frmAddStage, false, true);
                 if (frmAddStage.DialogResult == DialogResult.OK) {
                     stages.AddRange(frmAddStage.BsonDocumentList);
                     FillStagesTreeview();
@@ -150,12 +151,26 @@ namespace FunctionForm.Aggregation
         private void btnAggrBuilder_Click(object sender, EventArgs e)
         {
             var frmAggregationBuilder = new FrmStageBuilder();
-            Utility.OpenForm(frmAggregationBuilder, false, true);
+            UIAssistant.OpenModalForm(frmAggregationBuilder, false, true);
             foreach (var item in frmAggregationBuilder.Aggregation)
             {
                 stages.Add(item);
             }
             FillStagesTreeview();
+        }
+        /// <summary>
+        ///     Save As View
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnSaveAsView_Click(object sender, EventArgs e)
+        {
+            if (stages.Count == 0)
+                return;
+            var strViewName = MyMessageBox.ShowInput("pls Input Aggregate Pipeline Name ：",
+                "Save Aggregate Pipeline");
+            var pipeline = new BsonDocumentStagePipelineDefinition<BsonDocument, BsonDocument>(stages.Values.Select(x => (BsonDocument)x));
+            RuntimeMongoDbContext.GetCurrentIMongoDataBase().CreateView(strViewName, RuntimeMongoDbContext.GetCurrentCollectionName() , pipeline);
         }
     }
 }

@@ -1,7 +1,13 @@
-﻿using System;
-using System.Windows.Forms;
+﻿using Common;
+using FunctionForm.Operation;
 using MongoDB.Bson;
+using MongoGUICtl.ClientTree;
+using MongoUtility.Core;
+using MongoUtility.ToolKit;
+using ResourceLib.Method;
 using ResourceLib.UI;
+using System;
+using System.Windows.Forms;
 
 namespace FunctionForm.Aggregation
 {
@@ -17,11 +23,23 @@ namespace FunctionForm.Aggregation
             InitializeComponent();
             txtLimit.Enabled = chkLimit.Checked;
             txtSkip.Enabled = chkSkip.Checked;
+            txtSample.Enabled = chkSample.Checked;
+
             txtLimit.KeyPress += NumberTextBox.NumberTextInt_KeyPress;
             txtSkip.KeyPress += NumberTextBox.NumberTextInt_KeyPress;
+            txtSample.KeyPress += NumberTextBox.NumberTextInt_KeyPress;
+
+            var columnList = MongoHelper.GetCollectionSchame(RuntimeMongoDbContext.GetCurrentCollection());
+            foreach (var fieldname in columnList)
+            {
+                cmbSortByCount.Items.Add("$" + fieldname);
+                cmbUnwind.Items.Add("$" + fieldname);
+            }
 
             chkSkip.CheckedChanged += (x, y) => { txtSkip.Enabled = chkSkip.Checked; };
             chkLimit.CheckedChanged += (x, y) => { txtLimit.Enabled = chkLimit.Checked; };
+            chkSample.CheckedChanged += (x, y) => { txtSample.Enabled = chkSample.Checked; };
+
         }
 
         /// <summary>
@@ -31,8 +49,8 @@ namespace FunctionForm.Aggregation
         /// <param name="e"></param>
         private void frmAggregationCondition_Load(object sender, EventArgs e)
         {
-            QueryFieldPicker.InitByCurrentCollection(false);
-            GroupFieldPicker.InitByCurrentCollection(false);
+            QueryFieldPicker.InitByCurrentCollection(true);
+            GuiConfig.Translateform(this);
         }
 
         /// <summary>
@@ -44,16 +62,58 @@ namespace FunctionForm.Aggregation
         {
             //Project
             var project = QueryFieldPicker.GetAggregation();
-            if (project[0].AsBsonDocument.ElementCount > 0)
+            var supressAggr = project[0];
+            var projectAggr = project[1];
+            if (supressAggr[0].AsBsonDocument.ElementCount > 0)
             {
-                Aggregation.Add(project);
+                Aggregation.Add(supressAggr);
             }
+            //TODO:需要优化，全项目的时候，不用输出
+            if (projectAggr[0].AsBsonDocument.ElementCount > 0)
+            {
+                Aggregation.Add(projectAggr);
+            }
+
             //match
-            var match = MatchListPanel.GetMatchDocument();
+            var match = ConditionPan.GetMatchDocument();
             if (match != null)
             {
                 Aggregation.Add(match);
             }
+
+            //Sort
+            var sort = SortPanel.GetSortDocument();
+            if (sort != null)
+            {
+                Aggregation.Add(sort);
+            }
+
+            //Group
+            if (chkIdNull.Checked)
+            {
+                var id = new BsonDocument
+                {
+                    new BsonElement("_id", BsonNull.Value)
+                };
+                id.AddRange(FieldsElement.Value.AsBsonDocument.Elements);
+                var group = new BsonDocument("$group", id);
+                Aggregation.Add(group);
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(GroupIdElement.Name))
+                {
+                    var id = new BsonDocument
+                    {
+                        new BsonElement("_id", GroupIdElement.Value)
+                    };
+                    id.AddRange(FieldsElement.Value.AsBsonDocument.Elements);
+                    var group = new BsonDocument("$group", id);
+                    Aggregation.Add(group);
+                }
+            }
+
+
             //Skip
             if (chkSkip.Checked && int.Parse(txtSkip.Text) > 0)
             {
@@ -64,66 +124,87 @@ namespace FunctionForm.Aggregation
             {
                 Aggregation.Add(new BsonDocument("$limit", int.Parse(txtLimit.Text)));
             }
-            //Group
-            var groupDetail = GroupFieldPicker.GetGroupId();
-            if (groupDetail.GetElement(0).Value.AsBsonDocument.ElementCount != 0)
+            //IndexStats
+            if (chkIndexStats.Checked)
             {
-                foreach (var item in groupPanelCreator.GetGroup())
-                {
-                    groupDetail.Add(item);
-                }
-                var group = new BsonDocument("$group", groupDetail);
-                Aggregation.Add(group);
+                Aggregation.Add(new BsonDocument("$indexStats", new BsonDocument()));
             }
+            //sortByCount
+            if (chkSortByCount.Checked)
+            {
+                Aggregation.Add(new BsonDocument("$sortByCount", cmbSortByCount.Text));
+            }
+            //Sample
+            if (chkSample.Checked)
+            {
+                var size = new BsonDocument("size", (int.Parse(txtSample.Text)));
+                Aggregation.Add(new BsonDocument("$sample", size));
+            }
+            //unwind
+            if (chkUnwind.Checked)
+            {
+                if (!chkPreserveNullAndEmptyArrays.Checked && string.IsNullOrEmpty(txtincludeArrayIndex.Text))
+                {
+                    Aggregation.Add(new BsonDocument("$unwind", cmbUnwind.Text));
+                }
+                else
+                {
+                    var UnwindDoc = new BsonDocument();
+                    var field = new BsonElement("path", cmbUnwind.Text);
+                    UnwindDoc.Add(field);
+                    if (chkPreserveNullAndEmptyArrays.Checked)
+                    {
+                        var preserveNullAndEmptyArrays = new BsonElement("preserveNullAndEmptyArrays", BsonBoolean.True);
+                        UnwindDoc.Add(preserveNullAndEmptyArrays);
+                    }
+                    if (!string.IsNullOrEmpty(txtincludeArrayIndex.Text))
+                    {
+                        var includeArrayIndex = new BsonElement("includeArrayIndex", txtincludeArrayIndex.Text);
+                        UnwindDoc.Add(includeArrayIndex);
+                    }
+                    Aggregation.Add(new BsonDocument("$unwind", UnwindDoc));
+                }
+            }
+            Close();
+        }
+
+        /// <summary>
+        /// 取消
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnCancel_Click(object sender, EventArgs e)
+        {
             Close();
         }
 
         #region"Group"
 
-        /// <summary>
-        ///     添加一个Group项目
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void cmdAddGroupItem_Click(object sender, EventArgs e)
+        BsonElement GroupIdElement = new BsonElement();
+        private void cmdCreateGroupId_Click(object sender, EventArgs e)
         {
-            groupPanelCreator.AddGroupItem();
+            var frmInsertDoc = new frmCreateDocument();
+            UIAssistant.OpenModalForm(frmInsertDoc, false, true);
+            if (frmInsertDoc.mBsonDocument != null)
+            {
+                GroupIdElement = new BsonElement("id", frmInsertDoc.mBsonDocument);
+                UiHelper.FillDataToTreeView("GroupId", TreeViewGroupId, frmInsertDoc.mBsonDocument);
+            }
         }
-
-        /// <summary>
-        ///     清除所有Group项目
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void btnClear_Click(object sender, EventArgs e)
+        BsonElement FieldsElement = new BsonElement();
+        private void cmdCreateGroupFields_Click(object sender, EventArgs e)
         {
-            groupPanelCreator.Clear();
-        }
-
-        #endregion
-
-        #region"Match"
-
-        /// <summary>
-        ///     新增MatchItem
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void btnAddMatch_Click(object sender, EventArgs e)
-        {
-            MatchListPanel.AddMatchItem();
-        }
-
-        /// <summary>
-        ///     清除MatchItem
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void btnClearMatch_Click(object sender, EventArgs e)
-        {
-            MatchListPanel.Clear();
+            var frmInsertDoc = new frmCreateDocument();
+            UIAssistant.OpenModalForm(frmInsertDoc, false, true);
+            if (frmInsertDoc.mBsonDocument != null)
+            {
+                FieldsElement = new BsonElement("fields", frmInsertDoc.mBsonDocument);
+                UiHelper.FillDataToTreeView("GroupId", TreeViewGroupFields, frmInsertDoc.mBsonDocument);
+            }
         }
 
         #endregion
+
+
     }
 }

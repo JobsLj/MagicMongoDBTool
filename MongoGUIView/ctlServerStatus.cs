@@ -3,7 +3,6 @@ using Common;
 using MongoGUICtl.ClientTree;
 using MongoUtility.Core;
 using ResourceLib.Method;
-using ResourceLib.Properties;
 
 namespace MongoGUIView
 {
@@ -22,9 +21,9 @@ namespace MongoGUIView
         {
             try
             {
-                FillMongoDb.FillClientStatusToList(trvSvrStatus, RuntimeMongoDbContext.MongoConnClientLst);
-                FillMongoDb.FillDataBaseStatusToList(trvDBStatus, RuntimeMongoDbContext.MongoConnSvrLst);
-                FillMongoDb.FillCollectionStatusToList(trvColStatus, RuntimeMongoDbContext.MongoConnSvrLst);
+                FillMongoDB.FillClientStatusToList(trvSvrStatus, RuntimeMongoDbContext.MongoConnClientLst);
+                FillMongoDB.FillDataBaseStatusToList(trvDBStatus, RuntimeMongoDbContext.MongoConnSvrLst);
+                FillMongoDB.FillCollectionStatusToList(trvColStatus, RuntimeMongoDbContext.MongoConnSvrLst);
             }
             catch (Exception ex)
             {
@@ -52,21 +51,6 @@ namespace MongoGUIView
             RefreshStatus();
         }
 
-        /// <summary>
-        ///     切换自动手动模式
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void btnSwitch_Click(object sender, EventArgs e)
-        {
-        }
-
-        public void ResetCtl()
-        {
-            btnSwitch.Enabled = true;
-            RefreshStripButton.Enabled = true;
-            btnSwitch.Image = Resources.Run;
-        }
 
         /// <summary>
         /// </summary>

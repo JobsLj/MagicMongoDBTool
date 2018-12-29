@@ -1,15 +1,15 @@
-﻿using System;
+﻿using Common;
+using MongoDB.Bson;
+using MongoUtility.Basic;
+using MongoUtility.ToolKit;
+using ResourceLib.Method;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
-using Common;
-using MongoDB.Bson;
-using MongoUtility.Basic;
-using MongoUtility.ToolKit;
-using ResourceLib.Method;
 
 namespace MongoGUICtl
 {
@@ -38,6 +38,15 @@ namespace MongoGUICtl
         ///     是否实用UTC表示时间
         /// </summary>
         public static bool IsUtc { get; set; }
+
+        /// <summary>
+        ///     DateTimeFormat
+        /// </summary>
+        public static DateTimePickerFormat DateTimeFormat { set; get; }
+        /// <summary>
+        ///     DateTimeCustomFormat
+        /// </summary>
+        public static string DateTimeCustomFormat { set; get; }
 
         /// <summary>
         ///     是否使用千，百万系统表示数字
@@ -120,7 +129,7 @@ namespace MongoGUICtl
             {
                 e.Graphics.FillRectangle(Brushes.White, rect);
             }
-            var indentWidth = DatatreeView.Indent*e.Node.Level + 25;
+            var indentWidth = DatatreeView.Indent * e.Node.Level + 25;
             e.Graphics.DrawRectangle(SystemPens.Control, rect);
             var stringRect = new Rectangle(e.Bounds.X + indentWidth, e.Bounds.Y, colName.Width - indentWidth,
                 e.Bounds.Height);
@@ -149,13 +158,13 @@ namespace MongoGUICtl
             var mElement = new BsonElement();
             if (e.Node.Tag != null)
             {
-                if (e.Node.Tag.GetType() != typeof (BsonElement))
+                if (e.Node.Tag.GetType() != typeof(BsonElement))
                 {
-                    mElement = new BsonElement("", (BsonValue) e.Node.Tag);
+                    mElement = new BsonElement("", (BsonValue)e.Node.Tag);
                 }
                 else
                 {
-                    mElement = (BsonElement) e.Node.Tag;
+                    mElement = (BsonElement)e.Node.Tag;
                 }
             }
             var mValue = e.Node.Tag as BsonValue;
@@ -203,6 +212,14 @@ namespace MongoGUICtl
                     {
                         if (mElement.Value != null)
                         {
+                            if (mElement.Value.IsBsonDocument)
+                            {
+                                strColumnText = "{ " + mElement.Value.AsBsonDocument.ElementCount + " Fields }";
+                            }
+                            if (mElement.Value.IsBsonArray)
+                            {
+                                strColumnText = "{ " + mElement.Value.AsBsonArray.Count + " Items }";
+                            }
                             if (!mElement.Value.IsBsonDocument && !mElement.Value.IsBsonArray)
                             {
                                 strColumnText = GetDisplayString(ref mElement);
@@ -213,6 +230,14 @@ namespace MongoGUICtl
                             if (mValue != null)
                             {
                                 //Type这里已经有表示Type的标识了，这里就不重复显示了。
+                                if (mValue.IsBsonDocument)
+                                {
+                                    if (e.Node.Level > 0) strColumnText = "{ " + mValue.AsBsonDocument.ElementCount + " Fields }";
+                                }
+                                if (mValue.IsBsonArray)
+                                {
+                                    if (e.Node.Level > 0) strColumnText = "{ " + mValue.AsBsonArray.Count + " Items }";
+                                }
                                 if (!mValue.IsBsonDocument && !mValue.IsBsonArray)
                                 {
                                     if (e.Node.Level > 0)
@@ -271,19 +296,61 @@ namespace MongoGUICtl
             try
             {
                 strColumnText = mElement.Value.ToString();
-                //日期型处理
-                if (mElement.Value.IsValidDateTime)
+                if (mElement.Value.IsObjectId)
                 {
-                    if (IsUtc)
+                    var oid = mElement.Value.AsObjectId;
+                    strColumnText = oid.ToString();
+                    return strColumnText;
+                }
+                //日期型处理
+                if (mElement.Value.IsValidDateTime || mElement.Value.IsBsonTimestamp)
+                {
+                    DateTime datetime;
+                    if (mElement.Value.IsBsonTimestamp)
                     {
-                        strColumnText = mElement.Value.AsBsonDateTime.ToUniversalTime().ToString();
+                        BsonTimestamp bsonTime = mElement.Value.AsBsonTimestamp;
+                        datetime = new DateTime(1970, 1, 1).AddSeconds(bsonTime.Timestamp);
+                        if (IsUtc)
+                        {
+                            datetime = datetime.ToUniversalTime();
+                        }
+                        else
+                        {
+                            datetime = datetime.ToLocalTime();
+                        }
                     }
                     else
                     {
-                        strColumnText = mElement.Value.AsBsonDateTime.ToLocalTime().ToString();
+                        if (IsUtc)
+                        {
+                            datetime = mElement.Value.AsBsonDateTime.ToUniversalTime();
+                        }
+                        else
+                        {
+                            datetime = mElement.Value.AsBsonDateTime.ToLocalTime();
+                        }
+                    }
+                    switch (DateTimeFormat)
+                    {
+                        case DateTimePickerFormat.Long:
+                            strColumnText = datetime.ToLongDateString();
+                            break;
+                        case DateTimePickerFormat.Short:
+                            strColumnText = datetime.ToShortDateString();
+                            break;
+                        case DateTimePickerFormat.Time:
+                            strColumnText = datetime.ToShortTimeString();
+                            break;
+                        case DateTimePickerFormat.Custom:
+                            strColumnText = datetime.ToString(DateTimeCustomFormat);
+                            break;
+                        default:
+                            break;
                     }
                     return strColumnText;
                 }
+
+
                 //数字型处理
                 if (mElement.Value.IsNumeric)
                 {
@@ -308,6 +375,14 @@ namespace MongoGUICtl
                     }
                     return strColumnText;
                 }
+
+                if (mElement.Value.IsBsonBinaryData)
+                {
+                    BsonBinaryData bin = mElement.Value.AsBsonBinaryData;
+                    strColumnText = "Byte[" + bin.Bytes.Length + "](Binary)";
+                    return strColumnText;
+                }
+
             }
             catch (Exception)
             {
@@ -322,18 +397,18 @@ namespace MongoGUICtl
         /// <param name="e"></param>
         private void Control_SizeChanged(object sender, EventArgs e)
         {
-            colName.Width = Convert.ToInt32(Width*0.3);
-            colValue.Width = Convert.ToInt32(Width*0.45);
-            colType.Width = Convert.ToInt32(Width*0.2);
+            colName.Width = Convert.ToInt32(Width * 0.3);
+            colValue.Width = Convert.ToInt32(Width * 0.45);
+            colType.Width = Convert.ToInt32(Width * 0.2);
         }
 
         private void CtlTreeViewColumnsLoad(object sender, EventArgs e)
         {
             if (!GuiConfig.IsUseDefaultLanguage)
             {
-                colName.Text = GuiConfig.GetText(TextType.CommonName);
-                colValue.Text = GuiConfig.GetText(TextType.CommonValue);
-                colType.Text = GuiConfig.GetText(TextType.CommonType);
+                colName.Text = GuiConfig.GetText("Common.Name");
+                colValue.Text = GuiConfig.GetText("Common.Value");
+                colType.Text = GuiConfig.GetText("Common.Type");
             }
         }
 
@@ -347,5 +422,12 @@ namespace MongoGUICtl
             writer.Write(ContentData.ToJson(MongoHelper.JsonWriterSettings));
             writer.Close();
         }
+
+        public void Clear()
+        {
+            TreeView.Nodes.Clear();
+            listView.Items.Clear();
+        }
+
     }
 }

@@ -1,13 +1,4 @@
-﻿/*
- * Created by SharpDevelop.
- * User: scs
- * Date: 2015/1/8
- * Time: 9:59
- * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
- */
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
 using MongoUtility.Basic;
@@ -22,7 +13,7 @@ namespace MongoUtility.Core
     {
         /// <summary>
         /// </summary>
-        public static MongoConfig MongoConfig = new MongoConfig();
+        public static MongoConnectionConfigManager MongoConfig = new MongoConnectionConfigManager();
 
         #region Basic
 
@@ -52,6 +43,11 @@ namespace MongoUtility.Core
         public string Password { set; get; }
 
         /// <summary>
+        ///     在连接时输入密码
+        /// </summary>
+        public bool InputPasswordOnConnect { set; get; }
+
+        /// <summary>
         ///     数据库名称
         /// </summary>
         public string DataBaseName { set; get; }
@@ -61,14 +57,15 @@ namespace MongoUtility.Core
         #region Advance
 
         /// <summary>
-        ///     存储引擎
+        ///     存储引擎(服务器固有属性)
         /// </summary>
+        [XmlIgnore]
         public EnumMgr.StorageEngineType StorageEngine;
 
         /// <summary>
         ///     副本名称
         /// </summary>
-        public string ReplSetName;
+        public string ReplSetName { set; get; }
 
         /// <summary>
         ///     副本服务器列表
@@ -79,22 +76,22 @@ namespace MongoUtility.Core
         /// <summary>
         ///     连接字符串
         /// </summary>
-        public string ConnectionString;
+        public string ConnectionString { set; get; }
 
         /// <summary>
         ///     VerifySslCertificate
         /// </summary>
-        public bool VerifySslCertificate;
+        public bool VerifySslCertificate { set; get; }
 
         /// <summary>
         ///     connect TimeOut (Sec)
         /// </summary>
-        public double ConnectTimeoutMs;
+        public double ConnectTimeoutMs { set; get; }
 
         /// <summary>
         ///     Socket TimeOut (Sec)
         /// </summary>
-        public double SocketTimeoutMs;
+        public double SocketTimeoutMs { set; get; }
 
         /// <summary>
         ///     fsync
@@ -103,12 +100,12 @@ namespace MongoUtility.Core
         ///     true: the driver adds { fsync : true } to the getlasterror command. Implies safe=true.
         ///     false: the driver does not not add fsync to the getlasterror command.
         /// </remarks>
-        public bool Fsync;
+        public bool Fsync { set; get; }
 
         /// <summary>
         ///     journal
         /// </summary>
-        public bool Journal;
+        public bool Journal { set; get; }
 
         #endregion
 
@@ -125,32 +122,37 @@ namespace MongoUtility.Core
         public string SslCertificateFile;
 
         /// <summary>
+        ///     是否使用SSH
         /// </summary>
         public bool UseSsh { set; get; }
 
         /// <summary>
+        ///     这里的SSH主机就应该是MongoDB的主机？
         /// </summary>
         public string SshHost { set; get; }
 
         /// <summary>
+        ///     这里的SSH主机就应该是MongoDB的主机？
         /// </summary>
         public int SshPort { set; get; }
 
         /// <summary>
+        ///     SSH用户
         /// </summary>
         public string SshUser { set; get; }
 
         /// <summary>
+        ///     SSH密码
         /// </summary>
         public string SshPassword { set; get; }
 
         /// <summary>
-        /// 
+        ///     SSH私有钥匙文件
         /// </summary>
         public string SshPrivateKeyFile;
 
         /// <summary>
-        /// 验证机制
+        ///     验证机制
         /// </summary>
         public string AuthMechanism;
 
@@ -177,47 +179,49 @@ namespace MongoUtility.Core
             ///     副本服务器[Virtul]
             /// </summary>
             ReplsetSvr,
-
-            /// <summary>
-            ///     Master主服务器
-            /// </summary>
-            MasterSvr,
-
-            /// <summary>
-            ///     Slave从属服务器
-            /// </summary>
-            SlaveSvr
         }
+
+        /// <summary>
+        ///     服务器运行的进程名称：mongod/mongos
+        /// </summary>
+        [XmlIgnore]
+        public string ServerStatusProcess;
 
         /// <summary>
         ///     只读[这个属性是运行时决定的]
         /// </summary>
-        [XmlIgnore] public bool IsReadOnly;
+        [XmlIgnore]
+        public bool IsReadOnly;
 
         /// <summary>
         ///     当前连接是否可以使用[这个属性是运行时决定的]
         /// </summary>
-        [XmlIgnore] public bool Health;
+        [XmlIgnore]
+        public bool Health;
 
         /// <summary>
         ///     作为Admin登陆[这个属性是运行时决定的]
         /// </summary>
-        [XmlIgnore] public bool LoginAsAdmin;
+        [XmlIgnore]
+        public bool LoginAsAdmin;
 
         /// <summary>
         ///     当前连接的MongoDB版本[这个属性是运行时决定的]
         /// </summary>
-        [XmlIgnore] public Version MongoDbVersion;
+        [XmlIgnore]
+        public Version MongoDbVersion;
 
         /// <summary>
         ///     认证模式[这个属性是运行时决定的]
         /// </summary>
-        [XmlIgnore] public bool AuthMode;
+        [XmlIgnore]
+        public bool AuthMode;
 
         /// <summary>
         ///     服务器角色[这个属性是运行时决定的]
         /// </summary>
-        [XmlIgnore] public SvrRoleType ServerRole;
+        [XmlIgnore]
+        public SvrRoleType ServerRole;
 
         #endregion
 
@@ -229,6 +233,11 @@ namespace MongoUtility.Core
         ///     ReadPreference
         /// </summary>
         public string ReadPreference;
+
+        /// <summary>
+        ///     ReadConcern
+        /// </summary>
+        public string ReadConcern;
 
         /// <summary>
         ///     WriteConcern
